@@ -15,9 +15,10 @@ namespace lightspeed::odom {
 
 enum class PodRole : std::uint8_t { forward, strafe };
 
-// Tachyon is Tank. The field exists so the topology config and resolver
-// logic don't assume a specific drivetrain -- Holonomic is a recognized
-// value with a stub fallback path (see OdometryFusion), not a dead enumerator.
+// This drivetrain is tank. The field exists so the topology config and
+// resolver logic don't assume a specific drivetrain -- Holonomic is a
+// recognized value with a stub fallback path (see OdometryFusion), not a dead
+// enumerator.
 enum class DrivetrainKinematics : std::uint8_t { tank, holonomic };
 
 // Coarse trust level for the current pose, based on how much of the

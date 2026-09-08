@@ -24,7 +24,6 @@
 #include "lightspeed/hal/config.hpp"
 #include "lightspeed/hal/imu.hpp"
 #include "lightspeed/hal/motor_group.hpp"
-#include "lightspeed/hal/rotation_sensor.hpp"
 #include "lightspeed/motion/drive_straight_distance.hpp"
 #include "lightspeed/motion/drive_to_point.hpp"
 #include "lightspeed/motion/motion_constants.hpp"
@@ -65,19 +64,15 @@ namespace {
 // and bench-testing already use" (Steps 2/4/6) actually requires.
 std::optional<lightspeed::hal::MotorGroup> gLeftDrive;
 std::optional<lightspeed::hal::MotorGroup> gRightDrive;
+std::optional<lightspeed::hal::MotorGroup> gIntakeFront;
+std::optional<lightspeed::hal::MotorGroup> gIntakeRear;
 std::optional<lightspeed::control::DrivetrainVelocityController> gDrivetrain;
 
 std::optional<lightspeed::hal::Imu> gPrimaryImu;
 std::optional<lightspeed::hal::Imu> gSecondaryImu;
-std::optional<lightspeed::hal::RotationSensor> gLeftForwardRotation;
-std::optional<lightspeed::hal::RotationSensor> gRightForwardRotation;
-std::optional<lightspeed::hal::RotationSensor> gStrafeRotation;
 std::optional<lightspeed::odom::IMESource> gLeftIme;
 std::optional<lightspeed::odom::IMESource> gRightIme;
 std::optional<lightspeed::odom::IMUSource> gImuSource;
-std::optional<lightspeed::odom::TrackingWheelSource> gLeftForwardPod;
-std::optional<lightspeed::odom::TrackingWheelSource> gRightForwardPod;
-std::optional<lightspeed::odom::TrackingWheelSource> gStrafePod;
 std::optional<lightspeed::odom::OdometryFusion> gOdometry;
 
 std::optional<lightspeed::motion::TurnToHeading> gTurnToHeading;
@@ -129,9 +124,10 @@ std::optional<lightspeed::telemetry::SerialLink> gSerialLink;
 std::optional<lightspeed::hal::AiVisionSensor> gAiVisionSensor;
 std::optional<lightspeed::vision::VisionPoseCorrector> gVisionCorrector;
 
-constexpr std::uint32_t kLoopPeriodMs = 20;  // ~50Hz driver-control loop
+constexpr std::uint32_t kLoopPeriodMs = 10;  // ~100Hz driver-control loop
 constexpr double kDtSeconds = kLoopPeriodMs / 1000.0;
 constexpr std::uint32_t kStatusIntervalMs = 1000;  // periodic heartbeat, ~1Hz
+constexpr std::int32_t kIntakeVoltage = 12000;
 
 double normalizeStick(std::int32_t rawAnalog) {
 	return static_cast<double>(rawAnalog) / 127.0;
@@ -148,6 +144,8 @@ void initialize() {
 
 	gLeftDrive.emplace(hal::config::kLeftDriveGroup);
 	gRightDrive.emplace(hal::config::kRightDriveGroup);
+	gIntakeFront.emplace(hal::config::kIntakeFrontGroup);
+	gIntakeRear.emplace(hal::config::kIntakeRearGroup);
 	gDrivetrain.emplace(*gLeftDrive, *gRightDrive, control::kDrivetrainVelocityConfig);
 
 	gPrimaryImu.emplace(hal::config::kPrimaryImu.port);
@@ -155,22 +153,15 @@ void initialize() {
 	gPrimaryImu->calibrate(true);
 	gSecondaryImu->calibrate(true);
 
-	gLeftForwardRotation.emplace(hal::config::kLeftForwardPodRotation.port);
-	gRightForwardRotation.emplace(hal::config::kRightForwardPodRotation.port);
-	gStrafeRotation.emplace(hal::config::kStrafePodRotation.port);
-
 	gLeftIme.emplace(*gLeftDrive, odom::kDriveImeConfig);
 	gRightIme.emplace(*gRightDrive, odom::kDriveImeConfig);
 	gImuSource.emplace(*gPrimaryImu, &*gSecondaryImu);
 
-	// Order must match odom::kTachyonTopology.pods: leftForwardPod,
-	// rightForwardPod, strafePod.
-	gLeftForwardPod.emplace(*gLeftForwardRotation, odom::kTachyonTopology.pods[0]);
-	gRightForwardPod.emplace(*gRightForwardRotation, odom::kTachyonTopology.pods[1]);
-	gStrafePod.emplace(*gStrafeRotation, odom::kTachyonTopology.pods[2]);
-
-	std::vector<odom::TrackingWheelSource*> pods{&*gLeftForwardPod, &*gRightForwardPod, &*gStrafePod};
-	gOdometry.emplace(odom::kTachyonTopology.kinematics, *gLeftIme, *gRightIme, *gImuSource, pods);
+	// No tracking-wheel pods on the robot -- odometry is IME + dual IMU only,
+	// so OdometryFusion gets an empty pod list and falls back to
+	// drivetrain-kinematics-derived forward/strafe every cycle.
+	gOdometry.emplace(odom::kOdometryTopology.kinematics, *gLeftIme, *gRightIme, *gImuSource,
+	                   std::vector<odom::TrackingWheelSource*>{});
 
 	gTurnToHeading.emplace(*gDrivetrain, *gOdometry, motion::kTurnToHeadingConfig);
 	gDriveStraightDistance.emplace(*gDrivetrain, *gOdometry, motion::kDriveStraightDistanceConfig);
@@ -277,7 +268,7 @@ void autonomous() {
 	            finalPose.headingDegrees);
 }
 
-// Driver-control bench harness: drives Tachyon through the full input ->
+// Driver-control bench harness: drives the robot through the full input ->
 // profiling -> drive-mode -> accel-limited-slew -> velocity-controller
 // pipeline. R1/R2 move the Step 4 demo subsystem (a placeholder, not a real
 // mechanism) between presets so its `exampleArm.isExtended` flag toggles
@@ -301,10 +292,10 @@ void opcontrol() {
 	while (true) {
 		// -- Input profiling --
 		const driver::JoystickInput rawInput{
-		    .leftY = normalizeStick(master.get_analog(ANALOG_LEFT_Y)),
+		    .leftY = -normalizeStick(master.get_analog(ANALOG_LEFT_Y)),
 		    .leftX = normalizeStick(master.get_analog(ANALOG_LEFT_X)),
 		    .rightY = normalizeStick(master.get_analog(ANALOG_RIGHT_Y)),
-		    .rightX = normalizeStick(master.get_analog(ANALOG_RIGHT_X)),
+		    .rightX = -normalizeStick(master.get_analog(ANALOG_RIGHT_X)),
 		};
 		const driver::JoystickInput profiledInput{
 		    .leftY = gInputProfile->apply(rawInput.leftY),
@@ -327,6 +318,22 @@ void opcontrol() {
 
 		// -- Same target-velocity path auton will eventually use --
 		gDrivetrain->setTargetVelocity(leftSlewedRpm, rightSlewedRpm);
+
+		// Intake controls are direct and hold-to-run so releasing the button
+		// immediately stops both motors. L1 takes priority for opposing motion.
+		if (master.get_digital(DIGITAL_L1)) {
+			gIntakeFront->writeVoltage(kIntakeVoltage);
+			gIntakeRear->writeVoltage(-kIntakeVoltage);
+		} else if (master.get_digital(DIGITAL_B)) {
+			gIntakeFront->writeVoltage(kIntakeVoltage);
+			gIntakeRear->writeVoltage(kIntakeVoltage);
+		} else if (master.get_digital(DIGITAL_DOWN)) {
+			gIntakeFront->writeVoltage(-kIntakeVoltage);
+			gIntakeRear->writeVoltage(-kIntakeVoltage);
+		} else {
+			gIntakeFront->writeVoltage(0);
+			gIntakeRear->writeVoltage(0);
+		}
 
 		// -- Demo-subsystem preset buttons, to make the flag toggle live --
 		// Suppressed while the demo button macro (L1) is running, so a

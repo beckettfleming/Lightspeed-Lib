@@ -221,7 +221,7 @@ double OdometryFusion::resolvePodAxis(const PodArray& pods, const DeltaArray& de
 double OdometryFusion::resolveForwardFallback(double leftImeDelta, double rightImeDelta, bool leftHealthy,
                                                bool rightHealthy) const {
     if (kinematics_ != DrivetrainKinematics::tank) {
-        // TODO: holonomic forward-IME fallback. Tachyon is tank and
+        // TODO: holonomic forward-IME fallback. This drivetrain is tank and
         // doesn't need this path -- slot in the appropriate forward
         // combination here when a holonomic robot needs it.
         return 0.0;
@@ -245,7 +245,7 @@ double OdometryFusion::resolveStrafeFallback() const {
         return 0.0;
     }
     // TODO: holonomic strafe fallback (derived from wheel kinematics).
-    // Tachyon is tank and doesn't need this path.
+    // This drivetrain is tank and doesn't need this path.
     return 0.0;
 }
 

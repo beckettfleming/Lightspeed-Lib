@@ -24,34 +24,31 @@ namespace lightspeed::hal::config {
 // in a group can be commanded with the same sign of voltage and still turn
 // the group's output shaft in the same physical direction.
 //
-// TODO: confirm actual port wiring once Tachyon's drivetrain is wired.
+// TODO: confirm actual port wiring once drivetrain is wired.
 namespace port {
 
 inline constexpr std::int8_t kLeftDriveFront = 1;
-inline constexpr std::int8_t kLeftDriveMiddle = 2;
-inline constexpr std::int8_t kLeftDriveBack = 3;
-inline constexpr std::int8_t kRightDriveFront = -4;   // reversed
-inline constexpr std::int8_t kRightDriveMiddle = -5;  // reversed
-inline constexpr std::int8_t kRightDriveBack = -6;    // reversed
+inline constexpr std::int8_t kLeftDriveRear = 9;
+inline constexpr std::int8_t kRightDriveFront = -2;  // reversed
+inline constexpr std::int8_t kRightDriveRear = -10;  // reversed
+inline constexpr std::int8_t kIntakeFront = 4;
+inline constexpr std::int8_t kIntakeRear = 5;
 
-// Odometry tracking-wheel pods (Rotation sensors) and IMUs. Placeholder
-// topology: 2 forward pods (left/right) + 1 strafe pod, dual IMU.
-// TODO: confirm actual port wiring and final pod count once Tachyon's
-// odometry hardware is built -- see lightspeed::odom for how these are
-// consumed and how to add/remove pods.
-inline constexpr std::int8_t kLeftForwardPodRotation = 7;
-inline constexpr std::int8_t kRightForwardPodRotation = 8;
-inline constexpr std::int8_t kStrafePodRotation = 9;
-inline constexpr std::uint8_t kPrimaryImu = 10;
-inline constexpr std::uint8_t kSecondaryImu = 11;
+// Odometry: dual IMU only, no tracking-wheel pods -- see
+// odom::kOdometryTopology (pods left empty) and lightspeed::odom for how
+// IME + dual-IMU fusion works with zero pods configured.
+// TODO: ports unknown -- confirm once the IMUs are actually mounted on
+// the robot; these are unwired placeholders.
+inline constexpr std::uint8_t kPrimaryImu = 3;
+inline constexpr std::uint8_t kSecondaryImu = 8;
 
 // DEMO/PLACEHOLDER -- lightspeed::subsystem::demo::ExampleArm validates the
-// subsystem framework and is not a real Tachyon mechanism. Reuse or remove
+// subsystem framework and is not a real mechanism. Reuse or remove
 // this port once real subsystems replace the demo.
 inline constexpr std::int8_t kExampleArmMotor = 12;
 
 // AI Vision Sensor (AprilTag final-approach correction, see
-// lightspeed::vision). TODO: confirm actual port once mounted on Tachyon.
+// lightspeed::vision). TODO: confirm actual port once mounted on the robot.
 inline constexpr std::uint8_t kAiVisionSensor = 13;
 
 }  // namespace port
@@ -69,18 +66,32 @@ struct MotorGroupConfig {
 
 // TODO: confirm gearset once the drivetrain is built. Placeholder assumes
 // blue (6:1, 600 RPM) cartridges with an external reduction bringing output
-// to the ~343 RPM noted for Tachyon's drivetrain.
+// to the ~343 RPM target for the drivetrain.
 inline const MotorGroupConfig kLeftDriveGroup{
     "leftDriveGroup",
-    {port::kLeftDriveFront, port::kLeftDriveMiddle, port::kLeftDriveBack},
+    {port::kLeftDriveFront, port::kLeftDriveRear},
     pros::v5::MotorGears::blue,
     pros::v5::MotorUnits::degrees,
 };
 
 inline const MotorGroupConfig kRightDriveGroup{
     "rightDriveGroup",
-    {port::kRightDriveFront, port::kRightDriveMiddle, port::kRightDriveBack},
+    {port::kRightDriveFront, port::kRightDriveRear},
     pros::v5::MotorGears::blue,
+    pros::v5::MotorUnits::degrees,
+};
+
+inline const MotorGroupConfig kIntakeFrontGroup{
+    "intakeFrontGroup",
+    {port::kIntakeFront},
+    pros::v5::MotorGears::green,
+    pros::v5::MotorUnits::degrees,
+};
+
+inline const MotorGroupConfig kIntakeRearGroup{
+    "intakeRearGroup",
+    {port::kIntakeRear},
+    pros::v5::MotorGears::green,
     pros::v5::MotorUnits::degrees,
 };
 
@@ -98,15 +109,11 @@ struct ImuConfig {
     std::uint8_t port;
 };
 
-inline const RotationSensorConfig kLeftForwardPodRotation{"leftForwardPodRotation", port::kLeftForwardPodRotation};
-inline const RotationSensorConfig kRightForwardPodRotation{"rightForwardPodRotation", port::kRightForwardPodRotation};
-inline const RotationSensorConfig kStrafePodRotation{"strafePodRotation", port::kStrafePodRotation};
-
 inline const ImuConfig kPrimaryImu{"primaryImu", port::kPrimaryImu};
 inline const ImuConfig kSecondaryImu{"secondaryImu", port::kSecondaryImu};
 
 // DEMO/PLACEHOLDER -- backs lightspeed::subsystem::demo::ExampleArm, not a
-// real Tachyon mechanism. See that class's header for why it exists.
+// real robot mechanism. See that class's header for why it exists.
 inline const MotorGroupConfig kExampleArmGroup{
     "exampleArmGroup",
     {port::kExampleArmMotor},

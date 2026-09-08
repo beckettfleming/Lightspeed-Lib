@@ -5,7 +5,7 @@
  * parameters. Adjust here -- never inline in the primitives -- while
  * running the bench harness in src/main.cpp.
  *
- * TODO: every value below is a placeholder pending real tuning on Tachyon.
+ * TODO: every value below is a placeholder pending real tuning on the robot.
  */
 
 #pragma once
@@ -22,7 +22,7 @@ namespace lightspeed::motion {
 // match lightspeed::odom::kDriveImeConfig and
 // lightspeed::control::kDrivetrainVelocityConfig's ~343rpm assumption --
 // all three should be confirmed/tuned together against real hardware.
-inline const DrivetrainKinematicsConfig kTachyonKinematics{
+inline const DrivetrainKinematicsConfig kDrivetrainKinematics{
     .trackWidthInches = 12.0,  // TODO: confirm once the drivetrain is built
     .wheelDiameterInches = 4.0,
     .gearRatio = 343.0 / 600.0,
@@ -44,7 +44,7 @@ inline const TurnToHeadingConfig kTurnToHeadingConfig{
         },
     .timeoutSeconds = 3.0,
     .loopPeriodMs = 20,  // ~50Hz
-    .kinematics = kTachyonKinematics,
+    .kinematics = kDrivetrainKinematics,
 };
 
 inline const DriveStraightDistanceConfig kDriveStraightDistanceConfig{
@@ -70,7 +70,7 @@ inline const DriveStraightDistanceConfig kDriveStraightDistanceConfig{
     .headingCorrectionKP = 2.0,  // deg/s of correction per degree of drift. TODO: tune
     .timeoutSeconds = 5.0,
     .loopPeriodMs = 20,  // ~50Hz
-    .kinematics = kTachyonKinematics,
+    .kinematics = kDrivetrainKinematics,
 };
 
 inline const MoveToPoseConfig kMoveToPoseConfig{
@@ -80,7 +80,7 @@ inline const MoveToPoseConfig kMoveToPoseConfig{
     .settleCycles = 8,
     .timeoutSeconds = 6.0,
     .loopPeriodMs = 20,  // ~50Hz
-    .kinematics = kTachyonKinematics,
+    .kinematics = kDrivetrainKinematics,
     .speedProfile =
         {
             .maxVelocity = 40.0,
@@ -97,7 +97,7 @@ inline const PurePursuitConfig kPurePursuitConfig{
     .settleCycles = 8,
     .timeoutSeconds = 8.0,
     .loopPeriodMs = 20,  // ~50Hz
-    .kinematics = kTachyonKinematics,
+    .kinematics = kDrivetrainKinematics,
     .speedProfile =
         {
             .maxVelocity = 40.0,

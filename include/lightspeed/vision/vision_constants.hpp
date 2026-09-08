@@ -21,7 +21,7 @@ namespace lightspeed::vision {
 
 // TODO: replace with the AI Vision Sensor's actual calibrated focal
 // length/principal point (from its factory calibration or a checkerboard
-// calibration pass) and Tachyon's actual printed tag size once chosen.
+// calibration pass) and the robot's actual printed tag size once chosen.
 // focalLengthPixels/principalPointXPixels below assume a 320px-wide frame
 // and a rough guessed FOV -- placeholder only.
 inline constexpr CameraCalibration kAiVisionCalibration{
@@ -30,7 +30,7 @@ inline constexpr CameraCalibration kAiVisionCalibration{
     .tagSizeInches = 6.0,
 };
 
-// TODO: measure once the camera is actually mounted on Tachyon.
+// TODO: measure once the camera is actually mounted on the robot.
 inline constexpr CameraMountOffset kAiVisionMountOffset{
     .xInches = 0.0,
     .yInches = 6.0,

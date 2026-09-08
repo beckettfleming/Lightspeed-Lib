@@ -9,7 +9,7 @@
  * Deliberately NOT wired into main.cpp: this step is an independent
  * extension (its config -- calibration, mount offset, tag map -- is all
  * placeholder, and the AI Vision Sensor isn't necessarily even mounted on
- * Tachyon yet), so it doesn't touch the already-verified competition path
+ * the robot yet), so it doesn't touch the already-verified competition path
  * from Steps 1-8. Call runVisionBenchTest() yourself (e.g. temporarily from
  * opcontrol(), or a scratch test main) once the sensor is physically mounted
  * and vision_constants.hpp has been updated with real measurements.

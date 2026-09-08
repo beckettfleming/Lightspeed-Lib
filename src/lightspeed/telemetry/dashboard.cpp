@@ -46,7 +46,7 @@ void Dashboard::draw() const {
     pros::screen::fill_rect(0, 0, kDashboardScreenWidth, kDashboardScreenHeight);
 
     pros::screen::set_pen(pros::Color::white);
-    pros::screen::print(pros::E_TEXT_MEDIUM, kDashboardTitleLine, "Tachyon -- live dashboard");
+    pros::screen::print(pros::E_TEXT_MEDIUM, kDashboardTitleLine, "Robot -- live dashboard");
 
     const std::int32_t batteryMillivolts = pros::battery::get_voltage();
     pros::screen::print(pros::E_TEXT_MEDIUM, kDashboardBatteryLine, "Battery: %.2fV", batteryMillivolts / 1000.0);

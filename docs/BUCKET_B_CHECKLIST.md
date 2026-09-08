@@ -16,7 +16,7 @@ checklist, not a code-spelunking exercise going forward.
 
 All in [`include/lightspeed/hal/config.hpp`](../include/lightspeed/hal/config.hpp), in the `port` namespace and the config structs below it — the single file every port number is meant to live in.
 
-- [ ] Drivetrain motor ports (`kLeftDriveFront/Middle/Back`, `kRightDriveFront/Middle/Back`) — confirm once Tachyon's drivetrain is physically wired.
+- [ ] Drivetrain motor ports (`kLeftDriveFront/Middle/Back`, `kRightDriveFront/Middle/Back`) — confirm once the robot's drivetrain is physically wired.
 - [ ] Odometry tracking-wheel + IMU ports (`kLeftForwardPodRotation`, `kRightForwardPodRotation`, `kStrafePodRotation`, `kPrimaryImu`, `kSecondaryImu`) — confirm port wiring **and** final pod count once the odometry hardware is built (the placeholder assumes 2 forward pods + 1 strafe pod + dual IMU; a different topology needs matching changes in `odometry_constants.hpp` too, see below).
 - [ ] `kExampleArmMotor` — reused or removed once a real subsystem replaces the `ExampleArm` demo (see §5).
 - [ ] `kAiVisionSensor` — confirm once the AI Vision Sensor is actually mounted.
@@ -26,8 +26,8 @@ All in [`include/lightspeed/hal/config.hpp`](../include/lightspeed/hal/config.hp
 
 All in [`include/lightspeed/odom/odometry_constants.hpp`](../include/lightspeed/odom/odometry_constants.hpp).
 
-- [ ] `kTrackingWheelDiameterInches` (currently 2.0in, explicitly **not** Tachyon's 4in drive omnis) — measure the actual tracking wheel.
-- [ ] `kTachyonTopology.pods[*].offsetInches` (left forward = 6.0, right forward = -6.0, strafe = 0.0) — measure each pod's lever-arm offset from the tracking center once mounted.
+- [ ] `kTrackingWheelDiameterInches` (currently 2.0in, explicitly **not** the robot's 4in drive omnis) — measure the actual tracking wheel.
+- [ ] `kOdometryTopology.pods[*].offsetInches` (left forward = 6.0, right forward = -6.0, strafe = 0.0) — measure each pod's lever-arm offset from the tracking center once mounted.
 - [ ] `kDriveImeConfig.gearRatio` (343/600 placeholder) — confirm the actual external gear reduction on the drivetrain.
 
 ## 3. Drivetrain / motion control gains
@@ -35,14 +35,14 @@ All in [`include/lightspeed/odom/odometry_constants.hpp`](../include/lightspeed/
 Every PID/motion-profile gain in this codebase needs on-robot tuning — none of these are simulate-able correctly without the real drivetrain's mass, friction, and battery sag. Locations:
 
 - [ ] [`include/lightspeed/control/drivetrain_velocity_constants.hpp`](../include/lightspeed/control/drivetrain_velocity_constants.hpp) — `kP`/`kI`/`kD`/`kV`/`kS`, `maxVoltageSlewRatePerSecond`. (`lowBatteryMillivolts` is a reasonable generic V5-pack default, not season-specific — safe to leave as-is unless real match data says otherwise.)
-- [ ] [`include/lightspeed/motion/motion_constants.hpp`](../include/lightspeed/motion/motion_constants.hpp) — `kTachyonKinematics.trackWidthInches`; every gain in `kTurnToHeadingConfig`, `kDriveStraightDistanceConfig`, `kPurePursuitConfig`; `kMoveToPoseConfig.leadFraction` (added this pass, needs the same bench-tuning treatment as everything else here).
+- [ ] [`include/lightspeed/motion/motion_constants.hpp`](../include/lightspeed/motion/motion_constants.hpp) — `kDrivetrainKinematics.trackWidthInches`; every gain in `kTurnToHeadingConfig`, `kDriveStraightDistanceConfig`, `kPurePursuitConfig`; `kMoveToPoseConfig.leadFraction` (added this pass, needs the same bench-tuning treatment as everything else here).
 - [ ] [`include/lightspeed/driver/driver_control_constants.hpp`](../include/lightspeed/driver/driver_control_constants.hpp) — `kMaxDriveRpm` (tied to real gearing, must be confirmed together with the drivetrain kV above), `kDriveAccelLimitConfig.defaultMaxRpmPerSecond`.
 
 ## 4. AprilTag vision correction
 
 All in [`include/lightspeed/vision/vision_constants.hpp`](../include/lightspeed/vision/vision_constants.hpp). None of this is wired into the live competition path (see `main.cpp`'s comment on `gVisionCorrector`) precisely because it's all placeholder.
 
-- [ ] `kAiVisionCalibration` (focal length, principal point, tag size) — needs the AI Vision Sensor's real calibration (factory or checkerboard) and Tachyon's actual printed tag size.
+- [ ] `kAiVisionCalibration` (focal length, principal point, tag size) — needs the AI Vision Sensor's real calibration (factory or checkerboard) and the robot's actual printed tag size.
 - [ ] `kAiVisionMountOffset` — measure once the camera is physically mounted.
 - [ ] `kTagWorldMap` — replace with the real season's AprilTag placements (IDs and field poses) once published.
 - [ ] `kVisionGatingConfig.stableFrameThreshold`/`.maxSkewDegrees` — bench-tune against a physically measured tag placement using `vision_bench_test.hpp` (see diagnostic mode).
@@ -56,9 +56,9 @@ All in [`include/lightspeed/vision/vision_constants.hpp`](../include/lightspeed/
 
 ## 6. Real subsystem mechanisms
 
-- [ ] [`include/lightspeed/subsystem/demo/example_arm.hpp`](../include/lightspeed/subsystem/demo/example_arm.hpp) / `example_arm.cpp` — the entire class is a reference placeholder ("NOT A REAL MECHANISM"), including its gains, presets, and the `kExtendedThresholdRawDegrees` flag threshold. Real subsystems (lift, intake, etc.) don't exist yet because Tachyon's actual mechanisms aren't finalized.
+- [ ] [`include/lightspeed/subsystem/demo/example_arm.hpp`](../include/lightspeed/subsystem/demo/example_arm.hpp) / `example_arm.cpp` — the entire class is a reference placeholder ("NOT A REAL MECHANISM"), including its gains, presets, and the `kExtendedThresholdRawDegrees` flag threshold. Real subsystems (lift, intake, etc.) don't exist yet because the robot's actual mechanisms aren't finalized.
 - [ ] Everything downstream that references `ExampleArm` as a stand-in also needs revisiting once real subsystems exist: `AutonomousContext::exampleArm`, the demo button macro (`demo_macros.cpp`), the `exampleArm.isExtended` rule in `kDriveAccelLimitConfig`, and `Dashboard`'s fault indicator (currently keyed to `ExampleArmState::faulted` specifically).
 
 ---
 
-**Not on this list, and shouldn't be added to it:** anything flagged `// TODO` that's a pure software/design decision with no physical dependency (e.g. which drive mode Tachyon defaults to, `InputProfile`'s curve exponent, the vision gating thresholds' *existence* as opposed to their *values*, the holonomic-kinematics fallback stub). Those were resolved or left as deliberate, documented open decisions during this review pass — see the top-level `README.md`.
+**Not on this list, and shouldn't be added to it:** anything flagged `// TODO` that's a pure software/design decision with no physical dependency (e.g. which drive mode the robot defaults to, `InputProfile`'s curve exponent, the vision gating thresholds' *existence* as opposed to their *values*, the holonomic-kinematics fallback stub). Those were resolved or left as deliberate, documented open decisions during this review pass — see the top-level `README.md`.

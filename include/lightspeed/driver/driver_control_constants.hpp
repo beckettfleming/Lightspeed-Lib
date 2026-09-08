@@ -16,20 +16,20 @@
 
 namespace lightspeed::driver {
 
-inline constexpr DriveMode kDriveMode = DriveMode::arcade;  // TODO: pick tank/arcade for Tachyon
+inline constexpr DriveMode kDriveMode = DriveMode::arcade;  // TODO: pick tank/arcade for the robot
 
 inline const InputProfileConfig kInputProfileConfig{
-    .curveExponent = 2.0,  // TODO: tune -- higher = softer low-speed response
+    .curveExponent = 1.3,  // TODO: tune -- higher = softer low-speed response
     .deadband = 0.05,
 };
 
 // Matches the ~343 RPM top-speed reference already assumed by
 // control::kDrivetrainVelocityConfig's kV (see that file) -- both should be
-// confirmed/tuned together against Tachyon's actual drivetrain.
+// confirmed/tuned together against the actual drivetrain.
 inline constexpr double kMaxDriveRpm = 343.0;
 
 inline const AccelLimitConfig kDriveAccelLimitConfig{
-    .defaultMaxRpmPerSecond = 2000.0,  // TODO: tune -- effectively "full send"
+    .defaultMaxRpmPerSecond = 12000.0,  // TODO: tune for driver feel
     .rules =
         {
             // Stand-in condition until a real subsystem flag exists: cap

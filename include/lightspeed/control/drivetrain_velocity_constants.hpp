@@ -29,7 +29,7 @@ inline const DrivetrainVelocityConfig kDrivetrainVelocityConfig{
             .settleTolerance = 10.0,  // RPM
             .settleCycles = 10,       // ~100ms at the 100Hz control rate
         },
-    .maxVoltageSlewRatePerSecond = 40000.0,  // mV/s, full 12000mV swing in ~300ms. TODO: tune
+    .maxVoltageSlewRatePerSecond = 240000.0,  // mV/s, full 12000mV swing in ~50ms. TODO: tune
     .nominalBatteryMillivolts = 12000.0,
     .lowBatteryMillivolts = 11000.0,  // generic V5-pack "getting low" threshold, not season-specific -- see field doc
     .loopPeriodMs = 10,  // ~100Hz, matches the V5 motor's own update rate

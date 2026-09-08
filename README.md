@@ -1,7 +1,7 @@
 # Lightspeed
 
-A from-scratch VEX V5RC code library for team RoboPanthers (robot: Tachyon,
-97934U), built on PROS (C++). Layers: `lightspeed::hal` (Step 1),
+A from-scratch VEX V5RC code library for team RoboPanthers (robot: the team
+robot, 97934U), built on PROS (C++). Layers: `lightspeed::hal` (Step 1),
 `lightspeed::control` (Step 2), `lightspeed::odom` (Step 3),
 `lightspeed::subsystem` (Step 4), `lightspeed::driver` (Step 5),
 `lightspeed::motion` (Step 6), `lightspeed::auton` (Step 7),

@@ -4,7 +4,7 @@
  * ============================================================================
  * REFERENCE / PLACEHOLDER SUBSYSTEM -- NOT A REAL MECHANISM.
  *
- * Tachyon's actual mechanisms (lift, intake, etc.) aren't finalized. This
+ * The robot's actual mechanisms (lift, intake, etc.) aren't finalized. This
  * exists purely to exercise the subsystem framework end-to-end (state
  * machine, presets, PIDF position control, fault handling, flag registry)
  * on a single motor so the framework itself can be validated on hardware.
