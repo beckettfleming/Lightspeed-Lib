@@ -15,3 +15,9 @@ temp.log
 temp.errors
 *.ini
 .d/
+# Jekyll docs site
+docs/_site/
+docs/.jekyll-cache/
+docs/.jekyll-metadata
+docs/Gemfile.lock
+docs/vendor/

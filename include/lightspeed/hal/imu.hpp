@@ -2,9 +2,9 @@
  * \file lightspeed/hal/imu.hpp
  *
  * Generic HAL wrapper around a single V5 Inertial Sensor. Dual-IMU
- * averaging (when a robot has two) lives one layer up, in
- * lightspeed::odom::IMUSource -- this wrapper only ever talks to one
- * physical sensor.
+ * averaging lives one layer up, in lightspeed::odom::IMUSource.
+ *
+ * Docs: https://beckettfleming.github.io/Lightspeed-Lib/layers/hal/
  */
 
 #pragma once
@@ -23,19 +23,16 @@ public:
     // isReady() stays false until calibration completes.
     void calibrate(bool blocking = false) const;
 
-    // True once startup/re-calibration has finished and the sensor is
-    // reporting valid data. Heading reads are meaningless before this is
-    // true -- a match must never start trusting a mid-calibration heading.
+    // Heading reads are meaningless before this is true -- a match must
+    // never start trusting a mid-calibration heading.
     [[nodiscard]] bool isReady() const;
 
-    // Heading in degrees, bounded to [0, 360), clockwise-positive (VEXos's
-    // native convention). Returns 0.0 if the sensor isn't ready.
+    // [0, 360), clockwise-positive. 0.0 if the sensor isn't ready.
+    // Display only -- use getContinuousHeadingDegrees() for delta math.
     [[nodiscard]] double getHeadingDegrees() const;
 
-    // Total accumulated rotation in degrees, clockwise-positive,
-    // theoretically unbounded (no [0,360) wraparound) -- use this rather
-    // than getHeadingDegrees() when computing a delta between two reads.
-    // Returns 0.0 if the sensor isn't ready.
+    // Unbounded (no [0,360) wraparound), clockwise-positive. 0.0 if the
+    // sensor isn't ready. Use this when computing a delta between reads.
     [[nodiscard]] double getContinuousHeadingDegrees() const;
 
 private:

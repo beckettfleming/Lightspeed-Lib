@@ -1,12 +1,11 @@
 /**
  * \file lightspeed/diagnostics/diagnostic_mode.hpp
  *
- * Consolidates this project's scattered ad-hoc test entry points -- the
- * Step 8 serial telemetry link and the Step 9 AprilTag vision bench test,
- * both fully built but otherwise unwired into main.cpp -- into a single
- * selectable diagnostic mode, gated behind a boot-time controller-button
- * hold, instead of leaving them as independent one-off harnesses a
- * developer has to remember to wire in by hand.
+ * Consolidates the serial telemetry link and the AprilTag vision bench test
+ * -- both fully built but otherwise unreachable -- into one selectable
+ * diagnostic mode gated behind a boot-time controller-button hold.
+ *
+ * Docs: https://beckettfleming.github.io/Lightspeed-Lib/layers/diagnostics/
  */
 
 #pragma once
@@ -17,20 +16,14 @@
 
 namespace lightspeed::diagnostics {
 
-// Checks a boot-time controller-button hold (see the .cpp for which
-// button). If NOT held, returns immediately and does nothing -- the normal
-// initialize()/opcontrol()/autonomous() competition flow proceeds
-// completely unaffected, which is why this call is safe to make
-// unconditionally at the top of initialize().
+// If the boot-hold button (see the .cpp) is NOT held, returns immediately
+// and does nothing, which is why this is safe to call unconditionally at the
+// top of initialize().
 //
-// If held, prints a banner, starts `serialLink`, and runs the vision bench
-// test loop against `visionCorrector`/`odometry` (see
-// lightspeed::vision::runVisionBenchTest) -- which blocks forever
-// ([[noreturn]] in practice). This is a deliberate "service mode" that
-// REPLACES normal competition operation for this boot rather than running
-// alongside it: initialize() never returns, so autonomous()/opcontrol()
-// never run this boot. Power-cycle without the button held to boot
-// normally.
+// If held, starts `serialLink` and runs the vision bench test, which blocks
+// forever. This deliberately REPLACES normal competition operation for the
+// boot rather than running alongside it: initialize() never returns, so
+// autonomous()/opcontrol() never run. Power-cycle to boot normally.
 void runDiagnosticModeIfRequested(vision::VisionPoseCorrector& visionCorrector, odom::OdometryFusion& odometry,
                                    telemetry::SerialLink& serialLink);
 

@@ -1,9 +1,9 @@
 /**
  * \file lightspeed/driver/demo_macros.hpp
  *
- * PLACEHOLDER -- demonstrates the button-macro system (button_macro.hpp)
- * against the Step 4 demo subsystem, since no real mechanism exists yet.
- * Delete or replace once a real subsystem needs a real macro.
+ * PLACEHOLDER -- demonstrates the button-macro system against the demo
+ * subsystem, since no real mechanism exists yet. Delete or replace once a
+ * real subsystem needs a real macro.
  */
 
 #pragma once

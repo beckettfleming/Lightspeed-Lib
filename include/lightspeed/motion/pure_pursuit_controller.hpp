@@ -1,10 +1,10 @@
 /**
  * \file lightspeed/motion/pure_pursuit_controller.hpp
  *
- * Pure pursuit path following: adaptive lookahead + curvature steering,
- * with a Step 1 motion profile providing the target speed envelope over
- * the path's duration. Feeds the same Step 2 drivetrain velocity
- * controllers driver control uses -- one output path regardless of source.
+ * Pure pursuit path following: adaptive lookahead + curvature steering, with
+ * a motion profile providing the target speed envelope over the path.
+ *
+ * Docs: https://beckettfleming.github.io/Lightspeed-Lib/layers/motion/
  */
 
 #pragma once
@@ -38,10 +38,9 @@ public:
     PurePursuitController(control::DrivetrainVelocityController& drivetrain, odom::OdometryFusion& odometry,
                            const PurePursuitConfig& config);
 
-    // Blocking: smooths rawWaypoints, then follows the path until the robot
-    // settles at the final point or the timeout elapses. Commands the
-    // drivetrain velocity controllers throughout; stops (0,0 target) on
-    // return either way. No-op if rawWaypoints has fewer than 2 points.
+    // Blocking: smooths rawWaypoints, then follows the path until settled at
+    // the final point or timed out. Stops (0,0 target) on return either way.
+    // Forward-only. No-op with fewer than 2 points.
     void follow(const std::vector<Waypoint>& rawWaypoints);
 
 private:

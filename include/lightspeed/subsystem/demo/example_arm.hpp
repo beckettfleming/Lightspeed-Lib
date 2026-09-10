@@ -4,13 +4,11 @@
  * ============================================================================
  * REFERENCE / PLACEHOLDER SUBSYSTEM -- NOT A REAL MECHANISM.
  *
- * The robot's actual mechanisms (lift, intake, etc.) aren't finalized. This
- * exists purely to exercise the subsystem framework end-to-end (state
- * machine, presets, PIDF position control, fault handling, flag registry)
- * on a single motor so the framework itself can be validated on hardware.
- * Delete or replace this once real subsystems are designed -- do not build
- * on top of it as if it were a real mechanism.
+ * Exercises the subsystem framework end-to-end on a single motor. Delete or
+ * replace once real subsystems are designed; do not build on top of it.
  * ============================================================================
+ *
+ * Docs: https://beckettfleming.github.io/Lightspeed-Lib/layers/subsystem/
  */
 
 #pragma once
@@ -28,13 +26,12 @@ class ExampleArm : public Subsystem<ExampleArmState> {
 public:
     explicit ExampleArm(hal::MotorGroup& motors);
 
-    // Commands a transition to MovingToTarget, targeting the named preset
-    // ("LOW" / "MID" / "HIGH"). Logs and does nothing if presetName isn't
-    // registered. Safe to call from any task.
+    // "LOW" / "MID" / "HIGH". Logs and does nothing on an unknown name.
+    // Safe from any task.
     void moveToPreset(const char* presetName);
 
-    // Bench-test-only: forces the fault reaction without needing to
-    // physically jam the mechanism. Not part of normal operation.
+    // Bench-test only: forces the fault reaction without physically jamming
+    // the mechanism.
     void simulateFault();
 
 protected:

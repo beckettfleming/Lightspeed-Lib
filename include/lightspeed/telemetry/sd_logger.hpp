@@ -1,16 +1,15 @@
 /**
  * \file lightspeed/telemetry/sd_logger.hpp
  *
- * Buffered CSV logger: a dedicated low-priority background task polls the
- * telemetry bus at a fixed sample rate, formats each snapshot as one CSV
- * row into a RAM buffer, and periodically flushes several rows at once to
- * the SD card. Never writes synchronously from a timing-sensitive loop --
- * drivetrain/odometry code only ever calls TelemetryBus::record(), which is
- * a plain in-memory write.
+ * Buffered CSV logger: a low-priority background task polls the telemetry
+ * bus at a fixed rate, formats each snapshot into a RAM buffer, and flushes
+ * several rows at once. Never writes synchronously from a timing-sensitive
+ * loop -- those only ever call TelemetryBus::record().
  *
- * A new log file is opened on the disabled->enabled competition-state
- * transition (not at program boot), so re-running a match doesn't overwrite
- * the previous one -- see the edge detection in loggerLoop().
+ * A new log file opens on the disabled->enabled competition-state
+ * transition, not at boot, so one file is produced per match.
+ *
+ * Docs: https://beckettfleming.github.io/Lightspeed-Lib/layers/telemetry/
  */
 
 #pragma once
@@ -40,9 +39,8 @@ public:
 private:
     void loggerLoop();
 
-    // Closes any currently-open file, then opens a fresh one at the first
-    // unused index (see kSdLoggerFilenameFormat) -- safe to call even if no
-    // SD card is present (file_ just stays null and logging is skipped).
+    // Opens the first unused index. Safe with no SD card present -- file_
+    // stays null and logging is skipped.
     void startNewLogFile();
 
     void appendRow(const TelemetryBus::Snapshot& snapshot);

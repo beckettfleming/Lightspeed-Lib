@@ -1,10 +1,11 @@
 /**
  * \file lightspeed/motion/turn_to_heading.hpp
  *
- * Rotation-in-place primitive: a Step 2 PIDF controller operating on
- * odometry heading feedback, whose output is an angular velocity command
- * converted to left/right wheel RPM and fed into the existing Step 2
- * drivetrain velocity controllers -- same output path as everything else.
+ * Rotation-in-place primitive: a PIDF controller on odometry heading
+ * feedback, whose output is an angular velocity command converted to
+ * left/right wheel RPM.
+ *
+ * Docs: https://beckettfleming.github.io/Lightspeed-Lib/layers/motion/
  */
 
 #pragma once
@@ -19,9 +20,8 @@
 namespace lightspeed::motion {
 
 struct TurnToHeadingConfig {
-    // pidf.settleTolerance/settleCycles (degrees / cycle count) define the
-    // settle condition; pidf.kV/kA/kS are normally 0 here (no feedforward
-    // target velocity for a static heading target).
+    // kV/kA/kS are normally 0 here -- no feedforward target velocity for a
+    // static heading target.
     control::PIDFConfig pidf;
     double timeoutSeconds;
     std::uint32_t loopPeriodMs;
@@ -33,9 +33,8 @@ public:
     TurnToHeading(control::DrivetrainVelocityController& drivetrain, odom::OdometryFusion& odometry,
                   const TurnToHeadingConfig& config);
 
-    // Blocking: rotates in place to targetHeadingDegrees (clockwise-positive,
-    // matching lightspeed::odom's convention) until settled or timed out.
-    // Commands the drivetrain throughout; stops (0,0 target) on return.
+    // Blocking. targetHeadingDegrees is clockwise-positive. Stops (0,0
+    // target) on return, settled or timed out.
     void run(double targetHeadingDegrees);
 
 private:

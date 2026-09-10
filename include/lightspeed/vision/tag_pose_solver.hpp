@@ -1,11 +1,12 @@
 /**
  * \file lightspeed/vision/tag_pose_solver.hpp
  *
- * Corner-ratio approximation of a detected tag's bearing/distance/skew,
- * and combining that with the tag's known world pose + the camera's mount
- * offset to back out a candidate robot field pose. Deliberately not a full
- * PnP solve -- see the file-level comment in vision_pose_corrector.hpp for
- * why that's the intended design, not a placeholder for one.
+ * Corner-ratio approximation of a detected tag's bearing/distance/skew, and
+ * combining that with the tag's known world pose + the camera's mount offset
+ * to back out a candidate robot field pose. Deliberately not a full PnP
+ * solve -- see vision_pose_corrector.hpp for why that's intended.
+ *
+ * Docs: https://beckettfleming.github.io/Lightspeed-Lib/layers/vision/
  */
 
 #pragma once
@@ -16,14 +17,13 @@
 namespace lightspeed::vision {
 
 // Bearing: tag-center x-offset from the principal point, via focal length.
-// Distance: physical tag size / the two side edges' (corner0-corner3,
-// corner1-corner2) averaged length, pinhole-camera size-to-distance.
-// Skew: derived from the same two edge lengths via a pinhole-projection
-// depth relation (a tag angled away has a near edge that reads longer than
-// the far edge) -- see the .cpp for the exact formula. The formula itself
-// is a real derivation, not an ad hoc mapping; only its sign (which edge
-// the AI Vision Sensor's corner numbering calls "left") still needs
-// verification against real hardware.
+// Distance: tag size / the averaged length of the two side edges
+// (corner0-corner3, corner1-corner2).
+// Skew: the ratio of those edges, via a pinhole-projection depth relation.
+//
+// The skew formula is a real derivation, not an ad hoc mapping -- but its
+// SIGN (which edge the sensor's corner numbering calls "left") still needs
+// verification against real hardware. See the .cpp.
 [[nodiscard]] RelativeTagReading solveRelativePose(const hal::TagDetection& detection, const CameraCalibration& calibration);
 
 // Combines a relative reading with the tag's known world pose and the

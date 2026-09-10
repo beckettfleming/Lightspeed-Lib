@@ -1,17 +1,15 @@
 /**
  * \file lightspeed/subsystem/flag_registry.hpp
  *
- * Lightweight named boolean store. Subsystems register their own flags
- * (e.g. "exampleArm.isExtended") at init and update them from their own
- * update() -- nothing else consumes these yet, but a future driver-control
- * accel-limiting feature will read them by name. Registration makes a
- * mismatch between the name a consumer queries and what a subsystem
- * actually registered detectable (via a false return) instead of silently
- * doing nothing.
+ * Lightweight named boolean store. Subsystems register flags (e.g.
+ * "exampleArm.isExtended") at init and update them from their own update();
+ * driver control's accel-limit table reads them by name. Registration makes
+ * a name mismatch detectable via a false return instead of silently doing
+ * nothing.
  *
- * Thread-safe: subsystems update flags from the scheduler task while other
- * tasks (bench harness now, driver control later) may read them at any
- * time.
+ * Thread-safe: written from the scheduler task, read from any other.
+ *
+ * Docs: https://beckettfleming.github.io/Lightspeed-Lib/layers/subsystem/
  */
 
 #pragma once
@@ -30,49 +28,33 @@ public:
     FlagRegistry(const FlagRegistry&) = delete;
     FlagRegistry& operator=(const FlagRegistry&) = delete;
 
-    // Declares a flag by name with an initial value. Returns false (and
-    // logs) if the name is already registered or the registry is full. A
-    // caller that ignores this return value and proceeds to call setFlag()
-    // anyway is NOT protected from cross-subsystem name collisions -- see
-    // setFlag()'s doc comment.
+    // False (and logs) if the name is already registered or the registry is
+    // full. A caller that ignores this return value is NOT protected from
+    // cross-subsystem name collisions -- see setFlag().
     bool registerFlag(const char* name, bool initialValue = false);
 
-    // Removes a previously registered flag by name (swap-remove, so
-    // enumeration order via getNameAt() is stable except across this
-    // call). Returns false if it wasn't registered. Intended for teardown/
-    // test cleanup -- most subsystems live for the program's lifetime and
-    // never need this.
+    // Swap-remove, so getNameAt() ordering is stable except across this
+    // call. Intended for teardown/test cleanup.
     bool unregisterFlag(const char* name);
 
-    // Sets a registered flag's value. Returns false if name was never
-    // registered -- lets a caller detect a typo'd/mismatched flag name
+    // False if name was never registered, which catches a typo'd name
     // instead of it silently doing nothing.
     //
-    // NOTE -- no ownership enforcement: any caller that knows a flag's name
-    // can set it, regardless of which subsystem originally registered it.
-    // registerFlag() only rejects a SECOND registration of the same name
-    // (returns false, doesn't overwrite the first registrant's slot) -- but
-    // if that failure is ignored (as e.g. a constructor discarding the
-    // return value would), the second subsystem still believes it owns the
-    // name and will happily setFlag() it every cycle, silently stomping the
-    // first subsystem's value. There is currently only one real flag/
-    // subsystem in this codebase (exampleArm.isExtended), so this is a
-    // documented risk for when a second subsystem is added, not a fix --
-    // give every subsystem's flags a unique, subsystem-prefixed name (as
-    // exampleArm's already does) to avoid it in practice.
+    // NOTE -- no ownership enforcement: any caller knowing a flag's name can
+    // set it. registerFlag() rejects a SECOND registration of the same name,
+    // but if that failure is ignored the second subsystem will still
+    // setFlag() every cycle, stomping the first's value. Give every
+    // subsystem's flags a unique subsystem-prefixed name to avoid this.
     bool setFlag(const char* name, bool value);
 
-    // Returns defaultValue if name was never registered.
+    // defaultValue if name was never registered.
     [[nodiscard]] bool getFlag(const char* name, bool defaultValue = false) const;
 
     [[nodiscard]] bool isRegistered(const char* name) const;
 
-    // Number of currently registered flags, for enumeration via getNameAt()
-    // -- e.g. a future debug dashboard listing every flag by name.
     [[nodiscard]] std::uint8_t getRegisteredCount() const;
 
-    // The name registered at `index` (0..getRegisteredCount()), or nullptr
-    // if index is out of range.
+    // nullptr if index is out of range.
     [[nodiscard]] const char* getNameAt(std::uint8_t index) const;
 
 private:

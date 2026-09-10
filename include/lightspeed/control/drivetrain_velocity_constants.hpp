@@ -2,11 +2,13 @@
  * \file lightspeed/control/drivetrain_velocity_constants.hpp
  *
  * Single source of truth for the drivetrain velocity controller's tunable
- * parameters. Adjust gains here -- never in DrivetrainVelocityController
- * itself -- while running the bench-tuning harness in src/main.cpp.
+ * parameters. Adjust gains here -- never in DrivetrainVelocityController.
  *
  * TODO: every gain below is a placeholder. Tune on the bench harness with
  * the robot's drive wheels off the ground.
+ *
+ * Tuning procedure:
+ * https://beckettfleming.github.io/Lightspeed-Lib/guides/tuning/
  */
 
 #pragma once

@@ -51,17 +51,10 @@ namespace {
 
 // -- Shared, program-lifetime hardware/control objects --
 //
-// initialize() constructs all of these once; opcontrol() and autonomous()
-// both reference the SAME instances rather than each building their own.
-// This matters, not just tidiness: the GUI selector (built this step) has
-// to be usable starting in initialize(), before either opcontrol() or
-// autonomous() ever runs, which means the drivetrain/odometry objects it
-// depends on (odometry.setPose() on a tap, motion primitives a routine
-// calls) already have to be alive at that point. If opcontrol() then built
-// its own second DrivetrainVelocityController on the same motor ports,
-// two independent PIDF loops would fight over the same physical motors.
-// Sharing one instance is what "the exact same functions driver control
-// and bench-testing already use" (Steps 2/4/6) actually requires.
+// initialize() constructs these once; opcontrol() and autonomous() both
+// reference the SAME instances. If opcontrol() built its own second
+// DrivetrainVelocityController on the same ports, two independent PIDF loops
+// would fight over the same physical motors.
 std::optional<lightspeed::hal::MotorGroup> gLeftDrive;
 std::optional<lightspeed::hal::MotorGroup> gRightDrive;
 std::optional<lightspeed::hal::MotorGroup> gIntakeFront;
@@ -89,38 +82,26 @@ std::optional<lightspeed::driver::AccelLimitResolver> gAccelLimitResolver;
 std::optional<lightspeed::control::SlewRateLimiter> gLeftAccelSlew;
 std::optional<lightspeed::control::SlewRateLimiter> gRightAccelSlew;
 
-// Review-pass addition: non-blocking button-macro system (see
-// button_macro.hpp) -- ButtonMacroRunner needs no construction parameters,
-// so it's a plain program-lifetime global like gRoutineRegistry below,
-// rather than an std::optional. gDemoArmMacro captures a reference to
-// *gExampleArm internally (see demo_macros.cpp), so it must be constructed
-// after gExampleArm.
+// ButtonMacroRunner takes no construction parameters, so it's a plain global
+// rather than an optional. gDemoArmMacro captures a reference to
+// *gExampleArm, so it must be constructed after it.
 lightspeed::driver::ButtonMacroRunner gButtonMacroRunner;
 std::optional<lightspeed::driver::ButtonMacro> gDemoArmMacro;
 
 lightspeed::auton::RoutineRegistry gRoutineRegistry;
 std::optional<lightspeed::auton::SelectorGui> gSelectorGui;
 
-// Step 8: telemetry. TelemetryBus itself is a singleton (see
-// TelemetryBus::instance()) -- SdLogger and Dashboard just poll it at their
-// own rate, so no shared bus object needs constructing here.
+// TelemetryBus is a singleton, so no shared bus object is constructed here.
 std::optional<lightspeed::telemetry::SdLogger> gSdLogger;
 std::optional<lightspeed::telemetry::Dashboard> gDashboard;
-// Review-pass addition: built and started only inside diagnostic mode (see
-// diagnostic_mode.hpp) -- not part of normal competition operation, same
-// reasoning as Step 9's vision bench test never being wired into the
-// competition path.
+// Started only inside diagnostic mode, not during competition operation.
 std::optional<lightspeed::telemetry::SerialLink> gSerialLink;
 
-// Step 9 (AprilTag correction): constructed unconditionally like every
-// other placeholder-port HAL device in this file (consistent with
-// gPrimaryImu/gLeftForwardRotation/etc. -- none of these ports are
-// confirmed wired either), but its correction is only ever CONSUMED by
-// diagnostic mode's vision bench test, never applied to gOdometry during
-// normal operation -- vision_constants.hpp's calibration/mount-offset/tag-
-// map are all placeholder, and applying a placeholder-map-derived
-// correction to real match odometry would silently corrupt it once real
-// hardware exists but before the season map does.
+// Constructed unconditionally like every other placeholder-port device here,
+// but its correction is only ever CONSUMED by diagnostic mode's bench test,
+// never applied to gOdometry during normal operation -- applying a
+// placeholder-tag-map-derived correction to real match odometry would
+// silently corrupt it.
 std::optional<lightspeed::hal::AiVisionSensor> gAiVisionSensor;
 std::optional<lightspeed::vision::VisionPoseCorrector> gVisionCorrector;
 
@@ -135,10 +116,9 @@ double normalizeStick(std::int32_t rawAnalog) {
 
 }  // namespace
 
-// Builds every shared object above (blocking IMU calibration happens here,
-// as expected during PROS's initialize() phase), registers the placeholder
-// demo routines, and starts the GUI selector's background task so a driver
-// can pick a start location / routine any time before the match starts.
+// Builds every shared object above (IMU calibration blocks ~2-3s here),
+// registers the demo routines, and starts the GUI selector so a driver can
+// pick a start location and routine any time before the match.
 void initialize() {
 	using namespace lightspeed;
 
@@ -157,9 +137,8 @@ void initialize() {
 	gRightIme.emplace(*gRightDrive, odom::kDriveImeConfig);
 	gImuSource.emplace(*gPrimaryImu, &*gSecondaryImu);
 
-	// No tracking-wheel pods on the robot -- odometry is IME + dual IMU only,
-	// so OdometryFusion gets an empty pod list and falls back to
-	// drivetrain-kinematics-derived forward/strafe every cycle.
+	// No tracking-wheel pods -- odometry is IME + dual IMU only, so the
+	// kinematics fallback runs every cycle.
 	gOdometry.emplace(odom::kOdometryTopology.kinematics, *gLeftIme, *gRightIme, *gImuSource,
 	                   std::vector<odom::TrackingWheelSource*>{});
 
@@ -169,11 +148,9 @@ void initialize() {
 	gMoveToPose.emplace(*gDrivetrain, *gOdometry, motion::kMoveToPoseConfig);
 	gPurePursuit.emplace(*gDrivetrain, *gOdometry, motion::kPurePursuitConfig);
 
-	// Stand-in for a real subsystem: registers "exampleArm.isExtended",
-	// which driver control's accel-limit table reacts to, and gives
-	// autonomous routines something to coordinate with via the sequencer
-	// helpers. Must be constructed before AccelLimitResolver so its flag is
-	// already registered when that constructor's sanity check runs.
+	// Must be constructed before AccelLimitResolver so its
+	// "exampleArm.isExtended" flag is already registered when that
+	// constructor's sanity check runs.
 	gExampleArmMotors.emplace(hal::config::kExampleArmGroup);
 	gExampleArm.emplace(*gExampleArmMotors);
 	subsystem::Scheduler::instance().start();
@@ -183,8 +160,7 @@ void initialize() {
 	gLeftAccelSlew.emplace(driver::kDriveAccelLimitConfig.defaultMaxRpmPerSecond);
 	gRightAccelSlew.emplace(driver::kDriveAccelLimitConfig.defaultMaxRpmPerSecond);
 
-	// Demo macro captures *gExampleArm by reference (see demo_macros.cpp),
-	// so must come after gExampleArm is constructed above.
+	// Captures *gExampleArm by reference, so must come after it.
 	gDemoArmMacro.emplace(driver::demo::makeDemoArmCycleMacro(*gExampleArm));
 
 	gRoutineRegistry.registerRoutine(auton::demo::makeDemoStraightAndTurnRoutine());
@@ -192,27 +168,20 @@ void initialize() {
 
 	gSelectorGui.emplace(*gOdometry, gRoutineRegistry);
 
-	// Step 9 AprilTag correction: constructed unconditionally (see the
-	// global declarations above for why), and gSerialLink alongside it --
-	// both consumed only by diagnostic mode below, not by normal
-	// competition operation.
+	// Both consumed only by diagnostic mode below -- see the globals above.
 	gAiVisionSensor.emplace(hal::config::kAiVisionSensor);
 	gVisionCorrector.emplace(*gAiVisionSensor, vision::kAiVisionCalibration, vision::kAiVisionMountOffset,
 	                          vision::kTagWorldMap, vision::kVisionGatingConfig);
 	gSerialLink.emplace(telemetry::TelemetryBus::instance());
 
-	// Diagnostic mode (see diagnostic_mode.hpp): no-op and returns
-	// immediately unless the boot-hold button was held, in which case it
-	// never returns -- everything below (the selector GUI, SD logger,
-	// dashboard) intentionally never starts this boot.
+	// No-op unless Y was held at boot, in which case it never returns and
+	// nothing below starts this boot.
 	diagnostics::runDiagnosticModeIfRequested(*gVisionCorrector, *gOdometry, *gSerialLink);
 
 	gSelectorGui->start();
 
-	// Both gate themselves on competition state internally (SdLogger opens
-	// a file only on the disabled->enabled edge; Dashboard only draws
-	// during driver control) -- safe to start now alongside everything
-	// else, same as the selector.
+	// Both gate themselves on competition state internally, so starting them
+	// here is safe.
 	gSdLogger.emplace(telemetry::TelemetryBus::instance());
 	gSdLogger->start();
 	gDashboard.emplace(*gOdometry, *gExampleArm);
@@ -223,12 +192,8 @@ void disabled() {}
 
 void competition_initialize() {}
 
-// Competition entry point: releases the screen from the GUI selector (only
-// one task should own screen drawing at a time) and runs whichever routine
-// getRoutineForAutonomous() resolves to -- the confirmed one, or (review-
-// pass addition) the last tentatively-previewed one as a fallback if the
-// driver never tapped Confirm before the match timer started. Logs and
-// returns doing nothing only if NEITHER was ever selected.
+// Releases the screen from the GUI selector (only one task may draw at a
+// time) and runs whichever routine getRoutineForAutonomous() resolves to.
 void autonomous() {
 	using namespace lightspeed;
 
@@ -268,20 +233,16 @@ void autonomous() {
 	            finalPose.headingDegrees);
 }
 
-// Driver-control bench harness: drives the robot through the full input ->
-// profiling -> drive-mode -> accel-limited-slew -> velocity-controller
-// pipeline. R1/R2 move the Step 4 demo subsystem (a placeholder, not a real
-// mechanism) between presets so its `exampleArm.isExtended` flag toggles
-// live, driving the accel-limit condition table -- watch the console for
-// the accel-limit-change lines to confirm the conditional system is really
-// wired end-to-end, not just structurally present.
+// Drives the full pipeline: input -> profiling -> drive-mode -> accel-limited
+// slew -> velocity controller. R1/R2 move the demo subsystem between presets
+// so its `exampleArm.isExtended` flag toggles live and the accel-limit table
+// visibly reacts -- watch the console for the accel-limit-change lines.
 void opcontrol() {
 	using namespace lightspeed;
 
-	// Idempotent: autonomous() already stops the selector in the normal
-	// competition flow. This covers the bench-testing path where
-	// opcontrol() runs without autonomous() ever having been called, so the
-	// selector task and the dashboard task never both hold pros::screen.
+	// Idempotent -- autonomous() already stops the selector in the normal
+	// flow. This covers bench testing where autonomous() never runs, so the
+	// selector and dashboard tasks never both hold pros::screen.
 	gSelectorGui->stop();
 
 	pros::Controller master(pros::E_CONTROLLER_MASTER);
@@ -316,7 +277,7 @@ void opcontrol() {
 		const double leftSlewedRpm = gLeftAccelSlew->calculate(leftTargetRpm, kDtSeconds);
 		const double rightSlewedRpm = gRightAccelSlew->calculate(rightTargetRpm, kDtSeconds);
 
-		// -- Same target-velocity path auton will eventually use --
+		// -- The same target-velocity path autonomous uses --
 		gDrivetrain->setTargetVelocity(leftSlewedRpm, rightSlewedRpm);
 
 		// Intake controls are direct and hold-to-run so releasing the button
@@ -335,9 +296,8 @@ void opcontrol() {
 			gIntakeRear->writeVoltage(0);
 		}
 
-		// -- Demo-subsystem preset buttons, to make the flag toggle live --
-		// Suppressed while the demo button macro (L1) is running, so a
-		// direct press doesn't fight the macro's own moveToPreset() calls.
+		// Suppressed while the L1 macro is running, so a direct press
+		// doesn't fight the macro's own moveToPreset() calls.
 		if (!gButtonMacroRunner.isRunning()) {
 			if (master.get_digital_new_press(DIGITAL_R1)) {
 				gExampleArm->moveToPreset("HIGH");
@@ -347,15 +307,14 @@ void opcontrol() {
 			}
 		}
 
-		// -- Button-macro system: L1 runs the demo arm-cycle macro
-		// (HIGH -> wait until holding -> LOW) without blocking this loop --
-		// see button_macro.hpp for why sequencer.hpp isn't reused here.
+		// L1 runs the demo arm-cycle macro without blocking this loop.
+		// TODO: L1 is double-bound (intakes above, macro here) -- rebind
+		// once a real mechanism replaces the demo arm.
 		if (master.get_digital_new_press(DIGITAL_L1)) {
 			gButtonMacroRunner.trigger(*gDemoArmMacro);
 		}
 		gButtonMacroRunner.update();
 
-		// -- Visibility: print whenever the resolved accel limit changes --
 		if (accelLimit != previousAccelLimit) {
 			std::printf("[opcontrol] accel limit changed: %.0f -> %.0f RPM/s (exampleArm.isExtended=%s)\n",
 			            previousAccelLimit, accelLimit,
@@ -363,7 +322,6 @@ void opcontrol() {
 			previousAccelLimit = accelLimit;
 		}
 
-		// -- Periodic heartbeat, so the pipeline's alive even with no changes --
 		const std::uint32_t now = pros::millis();
 		if (now - previousStatusTime >= kStatusIntervalMs) {
 			std::printf("[opcontrol] target=(%.0f, %.0f)rpm slewed=(%.0f, %.0f)rpm accelLimit=%.0fRPM/s arm=%s\n",

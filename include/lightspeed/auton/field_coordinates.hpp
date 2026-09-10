@@ -26,14 +26,9 @@ struct ScreenRegion {
     std::int16_t y1;
 };
 
-// Field inches -> screen pixels: the field point (originXInches,
-// originYInches) maps to a drawing region's bottom-left corner, scaled by
-// pixelsPerInch (uniform on both axes). Field +y (forward at heading 0)
-// maps to screen -y (up) since screen y grows downward.
-//
-// One config value is used for both screens: screen 1 draws at full size
-// with this config as-is; screen 2's smaller preview pane derives a scaled
-// copy (same origin, reduced pixelsPerInch) -- see SelectorGui.
+// The field point (originXInches, originYInches) maps to a drawing region's
+// bottom-left corner, scaled uniformly by pixelsPerInch. Field +y maps to
+// screen -y (up), since screen y grows downward.
 struct FieldToScreenConfig {
     double originXInches;
     double originYInches;

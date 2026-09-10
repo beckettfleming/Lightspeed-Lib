@@ -1,10 +1,11 @@
 /**
  * \file lightspeed/odom/ime_source.hpp
  *
- * Forward-distance source backed by a drive motor group's built-in
- * encoders (IME). This is Tank's zero-pod forward fallback -- see
- * OdometryFusion -- constructed once per drive side so the fusion core can
- * average left/right.
+ * Forward-distance source backed by a drive motor group's built-in encoders.
+ * Tank's zero-pod forward fallback; construct one per drive side so the
+ * fusion core can average left/right.
+ *
+ * Docs: https://beckettfleming.github.io/Lightspeed-Lib/layers/odometry/
  */
 
 #pragma once
@@ -22,14 +23,12 @@ class IMESource {
 public:
     IMESource(hal::MotorGroup& motors, const IMEConfig& config);
 
-    // Forward-distance delta (inches) since the last read, converted via
-    // wheel diameter + gear ratio. Zero if unhealthy or on the first read
+    // Inches since the last read. Zero if unhealthy or on the first read
     // after construction/resetBaseline().
     double readDeltaInches();
 
-    // A stalled or over-temperature motor is still reporting a valid
-    // encoder position -- only an actually disconnected motor group
-    // invalidates this source.
+    // A stalled or over-temperature motor still reports a valid encoder
+    // position -- only an actually disconnected group invalidates this.
     [[nodiscard]] bool isHealthy() const;
 
     void resetBaseline();

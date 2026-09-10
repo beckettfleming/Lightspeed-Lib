@@ -2,8 +2,9 @@
  * \file lightspeed/odom/types.hpp
  *
  * Shared value types for the odometry subsystem: pod topology config, pose
- * and velocity, and the confidence tier the fusion core reports alongside
- * them.
+ * and velocity, and the confidence tier the fusion core reports.
+ *
+ * Docs: https://beckettfleming.github.io/Lightspeed-Lib/layers/odometry/
  */
 
 #pragma once
@@ -15,25 +16,16 @@ namespace lightspeed::odom {
 
 enum class PodRole : std::uint8_t { forward, strafe };
 
-// This drivetrain is tank. The field exists so the topology config and
-// resolver logic don't assume a specific drivetrain -- Holonomic is a
-// recognized value with a stub fallback path (see OdometryFusion), not a dead
-// enumerator.
+// This drivetrain is tank; holonomic has a stub fallback path in
+// OdometryFusion, not a dead enumerator.
 enum class DrivetrainKinematics : std::uint8_t { tank, holonomic };
 
-// Coarse trust level for the current pose, based on how much of the
-// configured tracking-wheel topology is actually healthy right now.
-// Declaration order is also confidence rank (best to worst) -- see
-// OdometryFusion::worseOf.
+// Declaration order IS confidence rank, best to worst -- which is what lets
+// OdometryFusion::worseOf be a plain max().
 enum class ConfidenceTier : std::uint8_t { fullPod = 0, partial = 1, imeOnly = 2 };
 
 [[nodiscard]] const char* toString(ConfidenceTier tier);
 
-// Describes one tracking-wheel pod's geometry and role. Pure config -- no
-// port number and no hal::RotationSensor reference here (those live in
-// hal::config and are paired with a PodConfig only where a
-// TrackingWheelSource is constructed), so this stays reusable wherever a
-// pod's geometry needs describing.
 struct PodConfig {
     const char* name;
     PodRole role;
@@ -53,8 +45,8 @@ struct PodConfig {
     double ticksToInches;
 };
 
-// The full pod topology for a robot: 0-4 pods, any mix of roles, plus which
-// kinematics to use when an axis has no currently-healthy pods.
+// 0-4 pods, any mix of roles, plus which kinematics to fall back to when an
+// axis has no currently-healthy pods.
 struct TopologyConfig {
     DrivetrainKinematics kinematics;
     std::vector<PodConfig> pods;

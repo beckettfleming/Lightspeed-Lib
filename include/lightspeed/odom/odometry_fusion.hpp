@@ -2,10 +2,10 @@
  * \file lightspeed/odom/odometry_fusion.hpp
  *
  * Fuses IME, IMU, and 0-4 tracking-wheel pods (any role distribution) into
- * a single field-frame pose, running its own ~200Hz task. See the per-cycle
- * algorithm in odometry_fusion.cpp: heading resolution -> per-axis pod
- * resolution (with lever-arm + chord-length correction) -> midpoint-heading
- * rotation into the field frame -> integration.
+ * a single field-frame pose, running its own ~200Hz task. The per-cycle
+ * algorithm lives in odometry_fusion.cpp.
+ *
+ * Docs: https://beckettfleming.github.io/Lightspeed-Lib/layers/odometry/
  */
 
 #pragma once
@@ -29,10 +29,9 @@ inline constexpr std::uint8_t kMaxPodsPerRole = 4;
 
 class OdometryFusion {
 public:
-    // pods: every configured tracking-wheel pod, any mix of roles, 0-4
-    // total (pointers must outlive this object). kinematics selects the
-    // forward/strafe fallback used whenever an axis has zero
-    // currently-healthy pods.
+    // pods: 0-4, any mix of roles; the pointers must outlive this object.
+    // kinematics selects the forward/strafe fallback used whenever an axis
+    // has zero currently-healthy pods.
     OdometryFusion(DrivetrainKinematics kinematics, IMESource& leftIme, IMESource& rightIme, IMUSource& imu,
                    const std::vector<TrackingWheelSource*>& pods);
     ~OdometryFusion();
@@ -46,23 +45,15 @@ public:
     [[nodiscard]] Velocity getVelocity() const;
     [[nodiscard]] ConfidenceTier getConfidence() const;
 
-    // Resets global pose AND every source's internal delta baseline in one
-    // step, atomic with respect to the fusion task, so the next cycle
-    // doesn't see a spurious jump comparing an old baseline to a
-    // freshly-set pose.
+    // Resets pose AND every source's delta baseline in one step, atomic
+    // with respect to the fusion task, so the next cycle can't see a
+    // spurious jump from comparing an old baseline to a fresh pose.
     void setPose(const Pose& pose);
 
-    // Applies an externally-gated correction (e.g. from
-    // lightspeed::vision's AprilTag pose corrector) as a weighted blend
-    // toward visionPose: confidenceWeight in [0,1], where 1.0 is a full
-    // snap and anything less nudges the pose a fraction of the way there.
-    // Explicit design choice over a hard snap -- see the .cpp -- so a
-    // single noisy reading can't fully teleport the pose. Unlike setPose(),
-    // does NOT reset tracking-source baselines: this is a correction to
-    // the running estimate, not a re-initialization, so in-flight
-    // wheel/IME/IMU deltas since the last fusion cycle are preserved. Does
-    // not touch the normal arc-based update loop in fusionLoop() at all --
-    // this is purely an additional, occasional external input.
+    // Weighted blend toward visionPose; confidenceWeight in [0,1], 1.0 being
+    // a full snap. Unlike setPose(), does NOT reset source baselines -- this
+    // corrects a running estimate rather than re-initializing it, so
+    // in-flight deltas since the last cycle are preserved.
     void applyVisionCorrection(const Pose& visionPose, double confidenceWeight);
 
 private:
@@ -79,9 +70,8 @@ private:
     void fusionLoop();
 
     // Averages (2 healthy pods) or takes the median (3+) of the healthy,
-    // lever-arm-corrected pod deltas for one axis. outHealthyCount reports
-    // how many were actually usable, for confidence tiering; 0 there means
-    // the caller must apply the drivetrain-kinematics fallback.
+    // lever-arm-corrected pod deltas for one axis. outHealthyCount == 0
+    // means the caller must apply the drivetrain-kinematics fallback.
     [[nodiscard]] double resolvePodAxis(const PodArray& pods, const DeltaArray& deltas, const HealthArray& healthy,
                                          std::uint8_t configuredCount, double deltaThetaRadians,
                                          std::uint8_t& outHealthyCount) const;
@@ -109,9 +99,9 @@ private:
     PodArray strafePods_{};
     std::uint8_t strafePodCount_ = 0;
 
-    // Computed once from pod *configuration* (not runtime health) -- true
-    // if any role has 2+ configured pods, i.e. a differential-heading
-    // fallback pair could ever exist in this topology.
+    // From pod *configuration*, not runtime health: true if any role has 2+
+    // configured pods, i.e. a differential-heading fallback pair could ever
+    // exist in this topology.
     bool headingRedundancyAvailable_ = false;
 
     double continuousHeadingDegrees_ = 0.0;

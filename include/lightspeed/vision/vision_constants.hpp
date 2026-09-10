@@ -5,10 +5,12 @@
  * calibration, mounting offset, the tag-ID -> world-pose map, and gating
  * thresholds.
  *
- * TODO: every value below is a placeholder -- see the comment on each
- * table. None of this should be trusted until it's been measured against
- * real hardware and the real season field via the bench harness (see
- * vision_bench_test.hpp).
+ * TODO: every value below is a placeholder. None of it should be trusted
+ * until measured against real hardware and the real season field via the
+ * bench harness.
+ *
+ * Bringing vision online:
+ * https://beckettfleming.github.io/Lightspeed-Lib/layers/vision/
  */
 
 #pragma once
@@ -45,20 +47,17 @@ inline const std::vector<TagWorldPose> kTagWorldMap{
     TagWorldPose{.tagId = 2, .pose = {.xInches = 144.0, .yInches = 72.0, .headingDegrees = 270.0}},
 };
 
-// stableFrameThreshold/maxSkewDegrees: TODO tune on the bench harness
-// against a physically measured tag placement. correctionConfidence is a
-// blend weight (see OdometryFusion::applyVisionCorrection) -- high but not
-// 1.0, so a single noisy reading can't fully teleport the pose; a run of
-// gated-in readings converges on the true pose quickly at close range.
+// TODO: bench-tune stableFrameThreshold/maxSkewDegrees against a physically
+// measured tag placement. correctionConfidence is high but deliberately not
+// 1.0, so one noisy reading can't fully teleport the pose.
 inline constexpr VisionGatingConfig kVisionGatingConfig{
     .stableFrameThreshold = 5,
     .maxSkewDegrees = 25.0,
     .correctionConfidence = 0.85,
 };
 
-// Bench harness diagnostic loop rate -- see vision_bench_test.hpp. Well
-// under the AI Vision Sensor's own frame rate; this is a print/observe
-// loop, not a control loop.
+// A print/observe loop, not a control loop -- well under the sensor's own
+// frame rate.
 inline constexpr std::uint32_t kVisionBenchTestLoopPeriodMs = 100;
 
 }  // namespace lightspeed::vision

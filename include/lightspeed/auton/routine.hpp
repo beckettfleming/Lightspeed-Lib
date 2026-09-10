@@ -3,7 +3,9 @@
  *
  * Routine registry: each routine declares its name, which start location(s)
  * it's valid from, a preview point list for screen 2's route overlay, and
- * its run function (see autonomous_context.hpp).
+ * its run function.
+ *
+ * Docs: https://beckettfleming.github.io/Lightspeed-Lib/layers/autonomous/
  */
 
 #pragma once
@@ -29,8 +31,7 @@ public:
 
     [[nodiscard]] const std::vector<Routine>& getAll() const;
 
-    // Indices into getAll() valid for startLocationIndex (routines with an
-    // empty validStartLocationIndices are included for every start).
+    // Routines with an empty validStartLocationIndices match every start.
     [[nodiscard]] std::vector<std::size_t> getIndicesForStartLocation(std::size_t startLocationIndex) const;
 
 private:

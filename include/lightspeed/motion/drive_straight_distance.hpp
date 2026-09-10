@@ -1,11 +1,12 @@
 /**
  * \file lightspeed/motion/drive_straight_distance.hpp
  *
- * Straight-line distance primitive: a Step 1 motion profile provides the
- * target position/velocity/acceleration envelope, a Step 2 PIDF controller
- * tracks odometry forward-distance feedback against it, and a small P-only
- * trim holds the starting heading so the move doesn't drift off-line.
- * Output feeds the same Step 2 drivetrain velocity controllers.
+ * Straight-line distance primitive: a motion profile provides the
+ * position/velocity/acceleration envelope, a PIDF controller tracks odometry
+ * forward-distance against it, and a P-only trim holds the starting heading
+ * so the move doesn't drift off-line.
+ *
+ * Docs: https://beckettfleming.github.io/Lightspeed-Lib/layers/motion/
  */
 
 #pragma once
@@ -21,11 +22,9 @@
 namespace lightspeed::motion {
 
 struct DriveStraightDistanceConfig {
-    // distancePidf tracks profiled position (inches) against measured
-    // forward distance; kV should normally be ~1.0 (pass the profile's own
-    // velocity straight through as feedforward) with kP/kI/kD providing
-    // trim correction. settleTolerance/settleCycles define the settle
-    // condition once the profile has finished.
+    // Tracks profiled position (inches) against measured forward distance.
+    // kV should normally be ~1.0 -- pass the profile's own velocity straight
+    // through as feedforward, with kP/kI/kD providing trim only.
     control::PIDFConfig distancePidf;
     MotionProfileConfig motionProfile;  // inches/s, inches/s^2, inches/s^3
     double headingCorrectionKP;         // degrees of drift -> deg/s correction trim
@@ -39,10 +38,8 @@ public:
     DriveStraightDistance(control::DrivetrainVelocityController& drivetrain, odom::OdometryFusion& odometry,
                            const DriveStraightDistanceConfig& config);
 
-    // Blocking: drives distanceInches forward (negative = backward) along
-    // the heading held at the start of the call, until the profile
-    // finishes and the distance PIDF settles, or the timeout elapses.
-    // Commands the drivetrain throughout; stops (0,0 target) on return.
+    // Blocking. Negative distance = backward. Holds the heading captured at
+    // the start of the call. Stops (0,0 target) on return.
     void run(double distanceInches);
 
 private:

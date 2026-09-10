@@ -1,5 +1,11 @@
 # Bucket B checklist — needs real robot/season data
 
+> **Superseded.** This file is kept for history. The maintained version lives at
+> <https://beckettfleming.github.io/Lightspeed-Lib/guides/setup-checklist/>, which
+> matches the current code — this file predates the move away from tracking-wheel
+> pods and the addition of the intake motors, so its §1 and §2 no longer describe
+> the robot as configured.
+
 Everything below is implemented in code (not stubbed out) but populated with a
 clearly-marked placeholder value, because finishing it correctly requires a
 physical measurement, a hardware confirmation, or season-specific information

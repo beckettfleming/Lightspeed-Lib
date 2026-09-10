@@ -1,10 +1,11 @@
 /**
  * \file lightspeed/auton/start_location.hpp
  *
- * Named starting locations for the GUI's screen 1. TODO: replace with the
- * actual season field layout once game specifics are finalized -- these
- * are placeholder labels and poses only, same pattern as Step 1's
- * placeholder ports and Step 4's placeholder subsystem.
+ * Named starting locations for the GUI's screen 1. Tapping one calls
+ * odometry.setPose(), which is how the robot knows where it starts.
+ *
+ * TODO: replace with the actual season field layout -- these are
+ * placeholder labels and poses only.
  */
 
 #pragma once

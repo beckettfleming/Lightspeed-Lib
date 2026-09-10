@@ -1,17 +1,14 @@
 /**
  * \file lightspeed/auton/selector_gui.hpp
  *
- * Two-screen touch GUI selector on the V5 brain screen: screen 1 picks a
- * start location (and sets odometry's pose), screen 2 picks a routine
- * (filtered to that start, with a live route preview) and locks it in.
- * Owns a single background task that polls touches and redraws -- the
- * only task that should touch pros::screen while this is running (call
- * stop() before anything else needs the screen, e.g. a future telemetry
- * dashboard, or once autonomous() is about to run the confirmed routine).
+ * Two-screen touch GUI selector: screen 1 picks a start location (and sets
+ * odometry's pose), screen 2 picks a routine filtered to that start and
+ * locks it in. Owns a background task and is the ONLY task that may touch
+ * pros::screen while running -- call stop() before anything else draws.
  *
- * Stays live/re-editable the whole time it's running: nothing is locked in
- * until the confirm zone is tapped, and the back zone can always return to
- * screen 1 and reset screen 2's state.
+ * Nothing is locked in until the confirm zone is tapped.
+ *
+ * Docs: https://beckettfleming.github.io/Lightspeed-Lib/layers/autonomous/
  */
 
 #pragma once
@@ -33,28 +30,20 @@ public:
     SelectorGui(const SelectorGui&) = delete;
     SelectorGui& operator=(const SelectorGui&) = delete;
 
-    // Starts the GUI's background task (drawing + touch polling). No-op if
-    // already started.
+    // No-op if already started.
     void start();
 
-    // Stops the GUI's background task. No-op if not running. Call this
-    // before anything else draws to the screen.
+    // No-op if not running. Call before anything else draws to the screen.
     void stop();
 
-    // The routine confirmed via screen 2's confirm zone, or nullptr if
-    // none has been confirmed yet.
+    // nullptr if nothing has been confirmed.
     [[nodiscard]] const Routine* getConfirmedRoutine() const;
 
-    // Fallback-aware variant for the competition entry point: returns the
-    // confirmed routine if one was tapped; otherwise, if a routine was at
-    // least tentatively previewed on screen 2 (tapped once but Confirm was
-    // never tapped), returns that instead -- on the assumption the driver
-    // picked it deliberately and simply forgot to lock it in before the
-    // match timer started, rather than the robot doing nothing for the
-    // whole autonomous period. Returns nullptr only if nothing was even
-    // tentatively selected. outUsedFallback, if non-null, is set to true
-    // when the tentative-not-confirmed path was taken, so a caller can
-    // log/telemetry the distinction rather than it being silent.
+    // Fallback-aware variant for the competition entry point: the confirmed
+    // routine, else the last tentatively-previewed one (on the assumption
+    // the driver picked it deliberately and forgot to lock it in, rather
+    // than the robot doing nothing all period), else nullptr.
+    // outUsedFallback reports which path was taken so the caller can log it.
     [[nodiscard]] const Routine* getRoutineForAutonomous(bool* outUsedFallback = nullptr) const;
 
 private:

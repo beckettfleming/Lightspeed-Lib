@@ -2,8 +2,7 @@
  * \file lightspeed/auton/field_renderer.hpp
  *
  * Schematic top-down field overview (simple shapes, no bitmap asset).
- * Reusable at full size (screen 1) and at a smaller scale (screen 2's
- * preview pane) -- callers just pass a smaller region and a correspondingly
+ * Reusable at any scale -- pass a smaller region and a correspondingly
  * scaled-down FieldToScreenConfig.pixelsPerInch.
  */
 

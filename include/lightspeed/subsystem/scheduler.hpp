@@ -3,9 +3,10 @@
  *
  * Central scheduler: one PROS task iterates every registered subsystem and
  * calls update(), rather than each subsystem running its own task.
- * Subsystems register themselves automatically at construction (see
- * Subsystem<StateEnum>) -- call start() once, after all subsystems that
- * should run this session are constructed.
+ * Subsystems register themselves automatically at construction -- call
+ * start() once, after all of them are constructed.
+ *
+ * Docs: https://beckettfleming.github.io/Lightspeed-Lib/layers/subsystem/
  */
 
 #pragma once
@@ -26,12 +27,11 @@ public:
     Scheduler(const Scheduler&) = delete;
     Scheduler& operator=(const Scheduler&) = delete;
 
-    // Registers a subsystem to be updated every cycle. Safe to call from
-    // any task, including after start() (the new subsystem is simply
-    // picked up starting the next cycle).
+    // Safe from any task, including after start() -- a late arrival is
+    // picked up on the next cycle.
     void registerSubsystem(SchedulableSubsystem& subsystem);
 
-    // Starts the scheduler's background task. No-op if already started.
+    // No-op if already started.
     void start();
 
 private:

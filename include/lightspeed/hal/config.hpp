@@ -1,12 +1,10 @@
 /**
  * \file lightspeed/hal/config.hpp
  *
- * Logical-name -> physical V5 smart port map.
+ * Logical-name -> physical V5 smart port map. This file must be the ONLY
+ * place a raw port number appears anywhere in the codebase.
  *
- * This file must be the ONLY place a raw port number appears anywhere in the
- * codebase. Every subsystem should reference the named MotorGroupConfig
- * constants below (via lightspeed::hal::MotorGroup) instead of a literal
- * port number, so that rewiring the robot only ever means editing this file.
+ * Docs: https://beckettfleming.github.io/Lightspeed-Lib/layers/hal/
  */
 
 #pragma once
@@ -19,10 +17,7 @@
 
 namespace lightspeed::hal::config {
 
-// V5 smart ports are numbered 1-21 on the Brain. A NEGATIVE port number
-// tells pros::MotorGroup to reverse that motor internally, so every motor
-// in a group can be commanded with the same sign of voltage and still turn
-// the group's output shaft in the same physical direction.
+// Ports are 1-21; a NEGATIVE port number reverses that motor internally.
 //
 // TODO: confirm actual port wiring once drivetrain is wired.
 namespace port {
@@ -53,10 +48,6 @@ inline constexpr std::uint8_t kAiVisionSensor = 13;
 
 }  // namespace port
 
-// Describes one logical motor group: which ports back it, what gearing its
-// motors use, and what units its encoders should report in. Add a new
-// MotorGroupConfig here (plus ports in the `port` namespace above) whenever
-// a new subsystem (lift, intake, ...) comes online.
 struct MotorGroupConfig {
     const char* name;
     std::vector<std::int8_t> ports;
@@ -95,10 +86,6 @@ inline const MotorGroupConfig kIntakeRearGroup{
     pros::v5::MotorUnits::degrees,
 };
 
-// Describes one logical Rotation sensor or IMU: just a name + port, since
-// (unlike motor groups) these HAL wrappers take no other construction-time
-// configuration -- gearing/units concepts don't apply, and unit conversion
-// (wheel diameter, etc.) happens in the odometry layer, not here.
 struct RotationSensorConfig {
     const char* name;
     std::int8_t port;
@@ -112,8 +99,7 @@ struct ImuConfig {
 inline const ImuConfig kPrimaryImu{"primaryImu", port::kPrimaryImu};
 inline const ImuConfig kSecondaryImu{"secondaryImu", port::kSecondaryImu};
 
-// DEMO/PLACEHOLDER -- backs lightspeed::subsystem::demo::ExampleArm, not a
-// real robot mechanism. See that class's header for why it exists.
+// DEMO/PLACEHOLDER -- backs lightspeed::subsystem::demo::ExampleArm.
 inline const MotorGroupConfig kExampleArmGroup{
     "exampleArmGroup",
     {port::kExampleArmMotor},
@@ -121,8 +107,8 @@ inline const MotorGroupConfig kExampleArmGroup{
     pros::v5::MotorUnits::degrees,
 };
 
-// Describes one logical AI Vision Sensor: name + port, plus which AprilTag
-// family to detect (the sensor otherwise reports every family at once).
+// tagFamily selects which AprilTag family to detect (the sensor otherwise
+// reports every family at once).
 struct AiVisionConfig {
     const char* name;
     std::uint8_t port;

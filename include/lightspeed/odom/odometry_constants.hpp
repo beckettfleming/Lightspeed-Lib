@@ -5,11 +5,10 @@
  * factors. Adjust here -- never in the sources or fusion core themselves.
  *
  * This robot has no tracking-wheel pods: odometry is IME (drive encoders) +
- * dual IMU only. kOdometryTopology.pods is intentionally empty -- the
- * resolver in OdometryFusion falls back to drivetrain-kinematics-derived
- * forward/strafe whenever an axis has zero configured pods, which is always
- * true here. See lightspeed::hal::config for the (currently unwired) IMU
- * ports.
+ * dual IMU only, so kOdometryTopology.pods is intentionally empty and the
+ * kinematics fallback runs every cycle.
+ *
+ * Docs: https://beckettfleming.github.io/Lightspeed-Lib/layers/odometry/
  */
 
 #pragma once

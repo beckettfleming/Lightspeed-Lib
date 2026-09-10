@@ -1,11 +1,12 @@
 /**
  * \file lightspeed/telemetry/serial_link.hpp
  *
- * Bench-tuning only: streams the telemetry bus over the existing USB stdout
- * as one CSV line per cycle (a header line, then one data line per sample),
- * so a laptop-side script can tail the terminal and live-plot values. Not
- * part of competition operation -- see main.cpp for where this is (not)
- * started.
+ * Bench-tuning only: streams the telemetry bus over USB stdout as CSV (a
+ * header line, then one data line per sample) so a laptop-side script can
+ * tail the terminal and live-plot values. Never started during normal
+ * competition operation -- its only entry point is diagnostic mode.
+ *
+ * Docs: https://beckettfleming.github.io/Lightspeed-Lib/layers/diagnostics/
  */
 
 #pragma once

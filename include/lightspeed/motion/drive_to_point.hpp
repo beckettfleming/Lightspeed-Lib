@@ -1,9 +1,13 @@
 /**
  * \file lightspeed/motion/drive_to_point.hpp
  *
- * Drive-to-point / turn-to-point: computes heading/distance to a target
- * point from the current odometry pose, then applies TurnToHeading and
- * DriveStraightDistance -- no new control loop, purely composition.
+ * Drive-to-point / turn-to-point: computes heading/distance to a target from
+ * the current odometry pose, then applies TurnToHeading and
+ * DriveStraightDistance. No new control loop -- purely composition, so it is
+ * a discrete turn-then-drive with no heading target on arrival. Use
+ * MoveToPose when arrival heading matters.
+ *
+ * Docs: https://beckettfleming.github.io/Lightspeed-Lib/layers/motion/
  */
 
 #pragma once

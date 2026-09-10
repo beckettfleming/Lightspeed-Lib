@@ -67,18 +67,12 @@ void DrivetrainVelocityController::updateSide(hal::MotorGroup& motors, PIDFContr
     telemetryBus.record(isLeftSide ? "drivetrain.left.connectedMotors" : "drivetrain.right.connectedMotors",
                          static_cast<std::int32_t>(connectedMotors));
 
-    // Fail-safe: previously `health` was read and recorded for telemetry
-    // only, and PIDF-computed voltage kept getting commanded every cycle
-    // regardless of it -- a stalled/overheating/disconnected drive motor
-    // would be driven indefinitely. `stalled`/`overTemperature` always stop
-    // (continuing to drive through either is actively harmful, whether it's
-    // 1 or all motors in the group); `disconnected` only stops the side if
-    // EVERY motor in the group is gone -- a partial disconnect (getHealth()
-    // collapses "1 of 3 down" and "3 of 3 down" into the same status, see
-    // hal::MotorGroup::getHealth()'s doc comment) keeps driving in a
-    // degraded state on whatever motors remain, rather than stopping a side
-    // that's still partially drivable. Either way, zeroing also resets the
-    // PIDF integrator and slew limiter so output ramps cleanly from zero
+    // Fail-safe. `stalled`/`overTemperature` always stop -- driving through
+    // either is actively harmful whether it's one motor or all of them.
+    // `disconnected` only stops the side once EVERY motor is gone, since
+    // getHealth() collapses "1 of 2 down" and "2 of 2 down" into one status
+    // and a partially drivable side should keep driving. Zeroing also resets
+    // the PIDF integrator and slew limiter so output ramps cleanly from zero
     // once health recovers, rather than resuming from stale state.
     const bool mustStop = health == hal::HealthStatus::stalled || health == hal::HealthStatus::overTemperature ||
                            (health == hal::HealthStatus::disconnected && connectedMotors == 0);
@@ -90,8 +84,8 @@ void DrivetrainVelocityController::updateSide(hal::MotorGroup& motors, PIDFContr
     }
 
     // Velocity control: the feedback setpoint and the feedforward velocity
-    // term are the same target RPM. No acceleration profile in this step,
-    // so the feedforward acceleration term is always zero.
+    // term are the same target RPM. No acceleration profile here, so the
+    // feedforward acceleration term is always zero.
     const Setpoint setpoint{.target = targetRpm, .targetVelocity = targetRpm, .targetAcceleration = 0.0};
     const double rawOutputMv = pidf.calculate(measuredRpm, setpoint, dtSeconds);
     const double slewedOutputMv = slew.calculate(rawOutputMv, dtSeconds);

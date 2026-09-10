@@ -154,12 +154,8 @@ void OdometryFusion::fusionLoop() {
 
         resetMutex_.give();
 
-        // HAL wrapper health (motor-group health for the same physical
-        // drive motors is recorded separately, see
-        // DrivetrainVelocityController::updateSide) plus pose/velocity/
-        // confidence -- everything OdometryFusion already computed this
-        // cycle, published for the SD logger / dashboard to sample at
-        // their own rate.
+        // Motor-group health for the same physical drive motors is recorded
+        // separately, in DrivetrainVelocityController::updateSide.
         telemetry::TelemetryBus& telemetryBus = telemetry::TelemetryBus::instance();
         telemetryBus.record("hal.leftIme.healthy", leftImeHealthy);
         telemetryBus.record("hal.rightIme.healthy", rightImeHealthy);
@@ -315,10 +311,9 @@ ConfidenceTier OdometryFusion::getConfidence() const {
 void OdometryFusion::applyVisionCorrection(const Pose& visionPose, double confidenceWeight) {
     const double weight = std::clamp(confidenceWeight, 0.0, 1.0);
 
-    // Same atomicity guarantee setPose() relies on: resetMutex_ is held for
-    // the entirety of a normal fusionLoop() cycle, so acquiring it here
-    // blocks until any in-progress cycle finishes, then this correction is
-    // fully applied before the next one starts.
+    // resetMutex_ is held for a whole fusionLoop() cycle, so acquiring it
+    // here blocks until any in-progress cycle finishes and this correction
+    // lands fully before the next one starts.
     resetMutex_.take();
 
     {

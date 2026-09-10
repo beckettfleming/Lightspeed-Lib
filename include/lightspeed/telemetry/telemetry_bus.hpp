@@ -1,15 +1,14 @@
 /**
  * \file lightspeed/telemetry/telemetry_bus.hpp
  *
- * Central named-channel registry: any layer calls record(name, value) on
- * its own update cycle to publish its latest reading. This is a passive
- * shared snapshot with many producers -- it does not own a polling loop or
- * decide how often anything gets sampled; SdLogger and Dashboard each poll
- * getSnapshot() at their own independent rate.
+ * Central named-channel registry: any layer calls record(name, value) on its
+ * own update cycle. Passive -- it owns no polling loop and decides nothing
+ * about sample rates; consumers poll getSnapshot() at their own rate.
  *
- * Channel names must be stable-lifetime strings (string literals, as used
- * everywhere else in this project -- see FlagRegistry, Routine::name) --
- * the bus stores the pointer, not a copy.
+ * Channel names MUST be stable-lifetime strings (string literals) -- the bus
+ * stores the pointer, not a copy.
+ *
+ * Docs: https://beckettfleming.github.io/Lightspeed-Lib/layers/telemetry/
  */
 
 #pragma once
@@ -39,10 +38,10 @@ public:
     TelemetryBus(const TelemetryBus&) = delete;
     TelemetryBus& operator=(const TelemetryBus&) = delete;
 
-    // Publishes the latest value for a named channel, registering it (in
-    // call order, stable thereafter) on first use. Safe to call from any
-    // task, every cycle -- a plain array scan under a short-lived mutex, no
-    // allocation. A plain `float` argument converts to double implicitly.
+    // Registers the channel on first use, in call order, stable thereafter
+    // (which is what keeps the CSV header valid for a whole run). Safe from
+    // any task every cycle -- an array scan under a short mutex, no
+    // allocation.
     void record(const char* name, double value);
     void record(const char* name, bool value);
     void record(const char* name, std::int32_t value);
@@ -55,17 +54,14 @@ public:
         std::uint8_t count = 0;
     };
 
-    // Copies every currently-registered channel's latest value. Cheap
-    // (fixed-size array copy, no allocation) and safe to call from any task
-    // at its own rate.
+    // Fixed-size array copy, no allocation. Safe from any task.
     [[nodiscard]] Snapshot getSnapshot() const;
 
 private:
     TelemetryBus() = default;
 
-    // Caller must hold mutex_. Returns the channel's index, registering a
-    // new one (appended, so ordering stays stable) if `name` hasn't been
-    // seen before, or -1 if the registry is full.
+    // Caller must hold mutex_. Appends a new channel if unseen, keeping
+    // ordering stable; -1 if the registry is full.
     [[nodiscard]] int findOrCreateIndexLocked(const char* name);
 
     std::array<ChannelSnapshot, kMaxChannels> channels_{};

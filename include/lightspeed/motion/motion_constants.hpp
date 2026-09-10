@@ -1,11 +1,13 @@
 /**
  * \file lightspeed/motion/motion_constants.hpp
  *
- * Single source of truth for the motion-control layer's tunable
- * parameters. Adjust here -- never inline in the primitives -- while
- * running the bench harness in src/main.cpp.
+ * Single source of truth for the motion-control layer's tunable parameters.
+ * Adjust here -- never inline in the primitives.
  *
  * TODO: every value below is a placeholder pending real tuning on the robot.
+ *
+ * Tuning procedure:
+ * https://beckettfleming.github.io/Lightspeed-Lib/guides/tuning/
  */
 
 #pragma once

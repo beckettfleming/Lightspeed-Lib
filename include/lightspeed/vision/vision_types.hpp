@@ -1,14 +1,13 @@
 /**
  * \file lightspeed/vision/vision_types.hpp
  *
- * Shared value types for AprilTag-based pose correction: camera
- * calibration/mounting config, the tag-ID -> world-pose map, the relative
- * reading a single tag's corners solve to, and the gate-status enum the
- * bench harness (and any future caller) reports.
+ * Shared value types for AprilTag-based pose correction.
  *
- * Matches lightspeed::odom's convention exactly: heading in degrees,
+ * Matches lightspeed::odom's convention: heading in degrees,
  * clockwise-positive; at heading 0, local forward maps to field +y and
- * local strafe-right maps to field +x (see pose_math.hpp).
+ * strafe-right to field +x.
+ *
+ * Docs: https://beckettfleming.github.io/Lightspeed-Lib/layers/vision/
  */
 
 #pragma once
@@ -26,8 +25,8 @@ struct CameraCalibration {
     double tagSizeInches;  // physical edge length of the printed tag
 };
 
-// Camera's fixed mounting offset from the robot's tracking center, in the
-// robot's local frame (same convention as odom::PodConfig::offsetInches).
+// Fixed mounting offset from the robot's tracking center, in the robot's
+// local frame (same convention as odom::PodConfig::offsetInches).
 struct CameraMountOffset {
     double xInches;               // right of tracking center
     double yInches;                // forward of tracking center
@@ -42,17 +41,13 @@ struct TagWorldPose {
     odom::Pose pose;
 };
 
-// A single tag's corners, solved into camera-relative bearing/distance/skew
-// (see tag_pose_solver.hpp) -- not yet combined with the tag's world pose.
+// Camera-relative, not yet combined with the tag's world pose.
 struct RelativeTagReading {
     double bearingDegrees;   // camera optical-axis -> tag center, clockwise-positive
     double distanceInches;   // camera -> tag center
     double skewDegrees;      // tag face normal's yaw relative to "facing the camera squarely"; formula derived, sign needs on-hardware verification, see solver
 };
 
-// Consecutive-frame stability threshold + skew rejection threshold + the
-// blend weight a gated-in correction is applied with (see
-// OdometryFusion::applyVisionCorrection).
 struct VisionGatingConfig {
     std::uint8_t stableFrameThreshold;
     double maxSkewDegrees;

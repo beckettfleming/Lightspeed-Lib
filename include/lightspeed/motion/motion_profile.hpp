@@ -1,14 +1,13 @@
 /**
  * \file lightspeed/motion/motion_profile.hpp
  *
- * Generic 1D time-parameterized motion profile: trapezoidal, or
- * jerk-limited S-curve when config.maxJerk > 0 AND the move is long enough
- * to reach both max acceleration and max velocity with jerk-limited ramps
- * (otherwise falls back to trapezoidal for that specific move -- see the
- * .cpp for why). Unit-agnostic: works in whatever distance unit the caller
- * passes (inches for drive-straight, degrees for a future subsystem, ...),
- * and isn't drivetrain-specific -- any future consumer profiling a 1D move
- * can reuse this directly.
+ * Generic 1D time-parameterized motion profile: trapezoidal, or jerk-limited
+ * S-curve when config.maxJerk > 0 AND the move is long enough to reach both
+ * max acceleration and max velocity with jerk-limited ramps (otherwise that
+ * specific move falls back to trapezoidal). Unit-agnostic -- works in
+ * whatever distance unit the caller passes.
+ *
+ * Docs: https://beckettfleming.github.io/Lightspeed-Lib/layers/motion/
  */
 
 #pragma once
@@ -31,8 +30,7 @@ class MotionProfile {
 public:
     MotionProfile(double startPosition, double endPosition, const MotionProfileConfig& config);
 
-    // State at time t (seconds) since profile start. t is clamped to
-    // [0, getTotalDuration()].
+    // t is seconds since profile start, clamped to [0, getTotalDuration()].
     [[nodiscard]] MotionState sample(double timeSeconds) const;
 
     [[nodiscard]] double getTotalDuration() const {
@@ -53,8 +51,7 @@ private:
     bool useSCurve_ = false;
     double totalDuration_ = 0.0;
 
-    // Trapezoidal segment params (always computed as the fallback; used
-    // directly when useSCurve_ is false).
+    // Always computed as the fallback; used directly when useSCurve_ is false.
     double trapAccelTime_ = 0.0;
     double trapCruiseTime_ = 0.0;
     double trapPeakVelocity_ = 0.0;

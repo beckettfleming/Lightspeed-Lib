@@ -3,6 +3,9 @@
  *
  * Distance source backed by one Rotation-sensor tracking-wheel pod. 0-4 of
  * these, in any mix of PodRole, feed the fusion core's per-axis resolution.
+ * This robot currently configures none.
+ *
+ * Docs: https://beckettfleming.github.io/Lightspeed-Lib/layers/odometry/
  */
 
 #pragma once

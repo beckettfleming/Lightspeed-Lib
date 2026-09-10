@@ -3,6 +3,8 @@
  *
  * Generic HAL wrapper around a single V5 Rotation Sensor, used by odometry
  * tracking-wheel pods.
+ *
+ * Docs: https://beckettfleming.github.io/Lightspeed-Lib/layers/hal/
  */
 
 #pragma once

@@ -1,5 +1,14 @@
 # Lightspeed
 
+📖 **Full documentation: <https://beckettfleming.github.io/Lightspeed-Lib/>**
+
+New to the codebase? Start with
+[Getting Started](https://beckettfleming.github.io/Lightspeed-Lib/getting-started/).
+Setting up real hardware? Start with the
+[Setup Checklist](https://beckettfleming.github.io/Lightspeed-Lib/guides/setup-checklist/).
+
+---
+
 A from-scratch VEX V5RC code library for team RoboPanthers (robot: the team
 robot, 97934U), built on PROS (C++). Layers: `lightspeed::hal` (Step 1),
 `lightspeed::control` (Step 2), `lightspeed::odom` (Step 3),

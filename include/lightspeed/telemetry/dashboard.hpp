@@ -1,17 +1,16 @@
 /**
  * \file lightspeed/telemetry/dashboard.hpp
  *
- * Live brain-screen dashboard for driver control: battery voltage, current
- * pose/confidence, subsystem state, and an active-fault indicator. Owns a
- * single background task, gated on competition state so it never draws
- * outside the driver-control period -- the Step 7 GUI selector owns the
- * screen through start-location/routine confirmation (disabled) and no one
- * draws during autonomous(), so the two never contend for pros::screen's
- * mutex (see the gating check in dashboardLoop()).
+ * Live brain-screen dashboard for driver control: battery, pose, confidence,
+ * subsystem state, and a fault indicator. Owns a background task gated on
+ * competition state so it never draws outside driver control -- the selector
+ * GUI owns the screen before the match and nothing draws during autonomous,
+ * so the two never contend for pros::screen's mutex.
  *
- * Takes direct references to the objects it displays, the same pattern
- * AutonomousContext and SelectorGui already use -- a curated, hand-picked
- * subset of the robot's state, not a generic bus-driven view.
+ * Takes direct references rather than reading the telemetry bus: this is a
+ * curated view of what a driver needs mid-match, not a generic dump.
+ *
+ * Docs: https://beckettfleming.github.io/Lightspeed-Lib/layers/telemetry/
  */
 
 #pragma once

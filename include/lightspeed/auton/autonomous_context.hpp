@@ -2,9 +2,11 @@
  * \file lightspeed/auton/autonomous_context.hpp
  *
  * Bundles the shared drivetrain/motion objects a routine needs -- all
- * constructed once (see src/main.cpp), all the exact same objects driver
- * control and the Step 6 bench harness already use. A routine just calls
- * into these; it is not a separate implementation of "move the robot."
+ * constructed once in src/main.cpp, all the exact same instances driver
+ * control uses. A routine calls into these; it is never a separate
+ * implementation of "move the robot".
+ *
+ * Docs: https://beckettfleming.github.io/Lightspeed-Lib/layers/autonomous/
  */
 
 #pragma once
@@ -29,8 +31,7 @@ struct AutonomousContext {
     motion::PurePursuitController& purePursuit;
     motion::MoveToPose& moveToPose;
 
-    // Stand-in for a real subsystem (see ExampleArm's header) -- lets a
-    // demo routine exercise the sequencer helpers against something real.
+    // Stand-in for a real subsystem; replace once real ones exist.
     subsystem::demo::ExampleArm& exampleArm;
 };
 

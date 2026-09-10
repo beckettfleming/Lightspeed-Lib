@@ -1,9 +1,8 @@
 /**
  * \file lightspeed/telemetry/dashboard_layout.hpp
  *
- * Pixel layout for the live driver-control dashboard: just a handful of
- * text lines and one fault indicator, since (unlike the Step 7 selector)
- * nothing here is tappable.
+ * Pixel layout for the live driver-control dashboard. Nothing here is
+ * tappable, unlike the auton selector.
  */
 
 #pragma once
@@ -12,10 +11,8 @@
 
 namespace lightspeed::telemetry {
 
-// Standard V5 Brain touch screen resolution (see also
-// lightspeed::auton::kScreenWidth/kScreenHeight -- duplicated here rather
-// than shared across modules, same as every other hardware constant in this
-// project).
+// Duplicated from auton::kScreenWidth/kScreenHeight rather than shared --
+// each module owns its own hardware constants.
 inline constexpr std::int16_t kDashboardScreenWidth = 480;
 inline constexpr std::int16_t kDashboardScreenHeight = 272;
 

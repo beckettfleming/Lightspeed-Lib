@@ -2,17 +2,14 @@
  * \file lightspeed/motion/move_to_pose.hpp
  *
  * Move-to-pose (boomerang-style): drives to a full target pose (x, y,
- * heading) in one continuous curved motion, rather than DriveToPoint's
- * discrete turn-then-drive (which also has no heading target at all --
- * Waypoint/PurePursuitController don't either). Steers via curvature toward
- * a "carrot" point offset behind the target along the TARGET's own heading,
- * scaled by remaining distance -- the classic boomerang technique: the
- * carrot converges on the target as the robot closes in, and because the
- * offset direction is fixed to the target heading throughout (not the
- * robot's own), chasing it naturally lines the robot up with that heading
- * on arrival, without a separate heading-blend term. Reuses the same
- * curvature-steering math as PurePursuitController and feeds the same Step
- * 2 drivetrain velocity controllers everything else does.
+ * heading) in one continuous curved motion, unlike DriveToPoint's discrete
+ * turn-then-drive (which has no heading target at all). Steers toward a
+ * "carrot" point offset behind the target along the TARGET's own heading,
+ * scaled by remaining distance -- because that offset direction is fixed to
+ * the target heading rather than the robot's, chasing the carrot lines the
+ * robot up with that heading on arrival with no separate blend term.
+ *
+ * Docs: https://beckettfleming.github.io/Lightspeed-Lib/layers/motion/
  */
 
 #pragma once
@@ -27,10 +24,9 @@
 namespace lightspeed::motion {
 
 struct MoveToPoseConfig {
-    // Carrot-point lead, as a fraction (0-1) of the remaining straight-line
-    // distance to the target, offset behind it along the target heading.
-    // Higher = earlier/more aggressive turn-in, lower = straighter approach
-    // with a sharper final turn to face targetHeadingDegrees.
+    // Fraction (0-1) of remaining distance the carrot sits behind the
+    // target. Higher = earlier/more aggressive turn-in; lower = straighter
+    // approach with a sharper final turn.
     double leadFraction;
 
     double positionToleranceInches;
@@ -46,17 +42,12 @@ class MoveToPose {
 public:
     MoveToPose(control::DrivetrainVelocityController& drivetrain, odom::OdometryFusion& odometry, const MoveToPoseConfig& config);
 
-    // Blocking: drives to (targetX, targetY, targetHeadingDegrees) via a
-    // single continuous curved motion, until the robot settles within both
-    // position AND heading tolerance, or the timeout elapses. Commands the
-    // drivetrain throughout; stops (0,0 target) on return either way.
+    // Blocking until settled within BOTH position and heading tolerance, or
+    // the timeout elapses. Stops (0,0 target) on return either way.
     //
-    // Known limitation (documented, not a bug): like PurePursuitController,
-    // this is forward-only -- it always drives toward the carrot point
-    // rather than reversing, even if the target pose is behind the robot's
-    // current heading. That matches this project's other curvature-steered
-    // primitives; a target that genuinely requires backing up isn't handled
-    // specially.
+    // Known limitation (documented, not a bug): forward-only. It always
+    // drives toward the carrot rather than reversing, even if the target is
+    // behind the robot.
     void run(double targetX, double targetY, double targetHeadingDegrees);
 
 private:

@@ -2,10 +2,11 @@
  * \file lightspeed/driver/driver_control_constants.hpp
  *
  * Single source of truth for driver control's tunable parameters. Adjust
- * here -- never inline in opcontrol() -- while running the bench harness in
- * src/main.cpp.
+ * here -- never inline in opcontrol().
  *
  * TODO: every value below is a placeholder pending real driver feel/testing.
+ *
+ * Docs: https://beckettfleming.github.io/Lightspeed-Lib/reference/configuration/
  */
 
 #pragma once
