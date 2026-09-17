@@ -7,7 +7,7 @@ description: Lightspeed — a from-scratch VEX V5RC robot library built on PROS.
 ---
 
 **Lightspeed** is a from-scratch VEX V5RC robot code library written in C++ on top of
-[PROS](https://pros.cs.purdue.edu/) 4.2.2. It was built for team **RoboPanthers (97934U)** and
+[PROS](https://pros.cs.purdue.edu/) 4.2.2. It was built for team **97934U Tachyon** and
 covers everything a competition robot needs: motor and sensor wrappers, velocity control,
 odometry, subsystems, driver control, autonomous motion, a touchscreen auton selector,
 telemetry logging, and AprilTag vision correction.
