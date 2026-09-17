@@ -4,8 +4,17 @@
  * ============================================================================
  * REFERENCE / PLACEHOLDER SUBSYSTEM -- NOT A REAL MECHANISM.
  *
+<<<<<<< Updated upstream
  * Exercises the subsystem framework end-to-end on a single motor. Delete or
  * replace once real subsystems are designed; do not build on top of it.
+=======
+ * Cherenkov's actual mechanisms (lift, intake, etc.) aren't finalized. This
+ * exists purely to exercise the subsystem framework end-to-end (state
+ * machine, presets, PIDF position control, fault handling, flag registry)
+ * on a single motor so the framework itself can be validated on hardware.
+ * Delete or replace this once real subsystems are designed -- do not build
+ * on top of it as if it were a real mechanism.
+>>>>>>> Stashed changes
  * ============================================================================
  *
  * Docs: https://beckettfleming.github.io/Lightspeed-Lib/layers/subsystem/

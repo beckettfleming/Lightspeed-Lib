@@ -19,7 +19,11 @@ namespace lightspeed::hal::config {
 
 // Ports are 1-21; a NEGATIVE port number reverses that motor internally.
 //
+<<<<<<< Updated upstream
 // TODO: confirm actual port wiring once drivetrain is wired.
+=======
+// TODO: confirm actual port wiring once Cherenkov's drivetrain is wired.
+>>>>>>> Stashed changes
 namespace port {
 
 inline constexpr std::int8_t kLeftDriveFront = 1;
@@ -29,6 +33,7 @@ inline constexpr std::int8_t kRightDriveRear = -10;  // reversed
 inline constexpr std::int8_t kIntakeFront = 4;
 inline constexpr std::int8_t kIntakeRear = 5;
 
+<<<<<<< Updated upstream
 // Odometry: dual IMU only, no tracking-wheel pods -- see
 // odom::kOdometryTopology (pods left empty) and lightspeed::odom for how
 // IME + dual-IMU fusion works with zero pods configured.
@@ -39,11 +44,30 @@ inline constexpr std::uint8_t kSecondaryImu = 8;
 
 // DEMO/PLACEHOLDER -- lightspeed::subsystem::demo::ExampleArm validates the
 // subsystem framework and is not a real mechanism. Reuse or remove
+=======
+// Odometry tracking-wheel pods (Rotation sensors) and IMUs. Placeholder
+// topology: 2 forward pods (left/right) + 1 strafe pod, dual IMU.
+// TODO: confirm actual port wiring and final pod count once Cherenkov's
+// odometry hardware is built -- see lightspeed::odom for how these are
+// consumed and how to add/remove pods.
+inline constexpr std::int8_t kLeftForwardPodRotation = 7;
+inline constexpr std::int8_t kRightForwardPodRotation = 8;
+inline constexpr std::int8_t kStrafePodRotation = 9;
+inline constexpr std::uint8_t kPrimaryImu = 10;
+inline constexpr std::uint8_t kSecondaryImu = 11;
+
+// DEMO/PLACEHOLDER -- lightspeed::subsystem::demo::ExampleArm validates the
+// subsystem framework and is not a real Cherenkov mechanism. Reuse or remove
+>>>>>>> Stashed changes
 // this port once real subsystems replace the demo.
 inline constexpr std::int8_t kExampleArmMotor = 12;
 
 // AI Vision Sensor (AprilTag final-approach correction, see
+<<<<<<< Updated upstream
 // lightspeed::vision). TODO: confirm actual port once mounted on the robot.
+=======
+// lightspeed::vision). TODO: confirm actual port once mounted on Cherenkov.
+>>>>>>> Stashed changes
 inline constexpr std::uint8_t kAiVisionSensor = 13;
 
 }  // namespace port
@@ -57,7 +81,11 @@ struct MotorGroupConfig {
 
 // TODO: confirm gearset once the drivetrain is built. Placeholder assumes
 // blue (6:1, 600 RPM) cartridges with an external reduction bringing output
+<<<<<<< Updated upstream
 // to the ~343 RPM target for the drivetrain.
+=======
+// to the ~343 RPM noted for Cherenkov's drivetrain.
+>>>>>>> Stashed changes
 inline const MotorGroupConfig kLeftDriveGroup{
     "leftDriveGroup",
     {port::kLeftDriveFront, port::kLeftDriveRear},
@@ -99,7 +127,12 @@ struct ImuConfig {
 inline const ImuConfig kPrimaryImu{"primaryImu", port::kPrimaryImu};
 inline const ImuConfig kSecondaryImu{"secondaryImu", port::kSecondaryImu};
 
+<<<<<<< Updated upstream
 // DEMO/PLACEHOLDER -- backs lightspeed::subsystem::demo::ExampleArm.
+=======
+// DEMO/PLACEHOLDER -- backs lightspeed::subsystem::demo::ExampleArm, not a
+// real Cherenkov mechanism. See that class's header for why it exists.
+>>>>>>> Stashed changes
 inline const MotorGroupConfig kExampleArmGroup{
     "exampleArmGroup",
     {port::kExampleArmMotor},

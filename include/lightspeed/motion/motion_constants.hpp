@@ -4,10 +4,14 @@
  * Single source of truth for the motion-control layer's tunable parameters.
  * Adjust here -- never inline in the primitives.
  *
+<<<<<<< Updated upstream
  * TODO: every value below is a placeholder pending real tuning on the robot.
  *
  * Tuning procedure:
  * https://beckettfleming.github.io/Lightspeed-Lib/guides/tuning/
+=======
+ * TODO: every value below is a placeholder pending real tuning on Cherenkov.
+>>>>>>> Stashed changes
  */
 
 #pragma once
@@ -24,7 +28,11 @@ namespace lightspeed::motion {
 // match lightspeed::odom::kDriveImeConfig and
 // lightspeed::control::kDrivetrainVelocityConfig's ~343rpm assumption --
 // all three should be confirmed/tuned together against real hardware.
+<<<<<<< Updated upstream
 inline const DrivetrainKinematicsConfig kDrivetrainKinematics{
+=======
+inline const DrivetrainKinematicsConfig kCherenkovKinematics{
+>>>>>>> Stashed changes
     .trackWidthInches = 12.0,  // TODO: confirm once the drivetrain is built
     .wheelDiameterInches = 4.0,
     .gearRatio = 343.0 / 600.0,
@@ -46,7 +54,11 @@ inline const TurnToHeadingConfig kTurnToHeadingConfig{
         },
     .timeoutSeconds = 3.0,
     .loopPeriodMs = 20,  // ~50Hz
+<<<<<<< Updated upstream
     .kinematics = kDrivetrainKinematics,
+=======
+    .kinematics = kCherenkovKinematics,
+>>>>>>> Stashed changes
 };
 
 inline const DriveStraightDistanceConfig kDriveStraightDistanceConfig{
@@ -72,7 +84,11 @@ inline const DriveStraightDistanceConfig kDriveStraightDistanceConfig{
     .headingCorrectionKP = 2.0,  // deg/s of correction per degree of drift. TODO: tune
     .timeoutSeconds = 5.0,
     .loopPeriodMs = 20,  // ~50Hz
+<<<<<<< Updated upstream
     .kinematics = kDrivetrainKinematics,
+=======
+    .kinematics = kCherenkovKinematics,
+>>>>>>> Stashed changes
 };
 
 inline const MoveToPoseConfig kMoveToPoseConfig{
@@ -82,7 +98,11 @@ inline const MoveToPoseConfig kMoveToPoseConfig{
     .settleCycles = 8,
     .timeoutSeconds = 6.0,
     .loopPeriodMs = 20,  // ~50Hz
+<<<<<<< Updated upstream
     .kinematics = kDrivetrainKinematics,
+=======
+    .kinematics = kCherenkovKinematics,
+>>>>>>> Stashed changes
     .speedProfile =
         {
             .maxVelocity = 40.0,
@@ -99,7 +119,11 @@ inline const PurePursuitConfig kPurePursuitConfig{
     .settleCycles = 8,
     .timeoutSeconds = 8.0,
     .loopPeriodMs = 20,  // ~50Hz
+<<<<<<< Updated upstream
     .kinematics = kDrivetrainKinematics,
+=======
+    .kinematics = kCherenkovKinematics,
+>>>>>>> Stashed changes
     .speedProfile =
         {
             .maxVelocity = 40.0,

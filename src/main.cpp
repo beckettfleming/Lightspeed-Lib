@@ -137,10 +137,21 @@ void initialize() {
 	gRightIme.emplace(*gRightDrive, odom::kDriveImeConfig);
 	gImuSource.emplace(*gPrimaryImu, &*gSecondaryImu);
 
+<<<<<<< Updated upstream
 	// No tracking-wheel pods -- odometry is IME + dual IMU only, so the
 	// kinematics fallback runs every cycle.
 	gOdometry.emplace(odom::kOdometryTopology.kinematics, *gLeftIme, *gRightIme, *gImuSource,
 	                   std::vector<odom::TrackingWheelSource*>{});
+=======
+	// Order must match odom::kCherenkovTopology.pods: leftForwardPod,
+	// rightForwardPod, strafePod.
+	gLeftForwardPod.emplace(*gLeftForwardRotation, odom::kCherenkovTopology.pods[0]);
+	gRightForwardPod.emplace(*gRightForwardRotation, odom::kCherenkovTopology.pods[1]);
+	gStrafePod.emplace(*gStrafeRotation, odom::kCherenkovTopology.pods[2]);
+
+	std::vector<odom::TrackingWheelSource*> pods{&*gLeftForwardPod, &*gRightForwardPod, &*gStrafePod};
+	gOdometry.emplace(odom::kCherenkovTopology.kinematics, *gLeftIme, *gRightIme, *gImuSource, pods);
+>>>>>>> Stashed changes
 
 	gTurnToHeading.emplace(*gDrivetrain, *gOdometry, motion::kTurnToHeadingConfig);
 	gDriveStraightDistance.emplace(*gDrivetrain, *gOdometry, motion::kDriveStraightDistanceConfig);
@@ -233,10 +244,20 @@ void autonomous() {
 	            finalPose.headingDegrees);
 }
 
+<<<<<<< Updated upstream
 // Drives the full pipeline: input -> profiling -> drive-mode -> accel-limited
 // slew -> velocity controller. R1/R2 move the demo subsystem between presets
 // so its `exampleArm.isExtended` flag toggles live and the accel-limit table
 // visibly reacts -- watch the console for the accel-limit-change lines.
+=======
+	// Driver-control bench harness: drives Cherenkov through the full input ->
+// profiling -> drive-mode -> accel-limited-slew -> velocity-controller
+// pipeline. R1/R2 move the Step 4 demo subsystem (a placeholder, not a real
+// mechanism) between presets so its `exampleArm.isExtended` flag toggles
+// live, driving the accel-limit condition table -- watch the console for
+// the accel-limit-change lines to confirm the conditional system is really
+// wired end-to-end, not just structurally present.
+>>>>>>> Stashed changes
 void opcontrol() {
 	using namespace lightspeed;
 
@@ -333,3 +354,4 @@ void opcontrol() {
 		pros::delay(kLoopPeriodMs);
 	}
 }
+
