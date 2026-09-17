@@ -27,7 +27,7 @@ aux_links_new_tab: true
 back_to_top: true
 back_to_top_text: "Back to top"
 
-footer_content: 'Lightspeed — VEX V5RC library for team RoboPanthers (97934U), built on PROS 4.2.2.'
+footer_content: 'Lightspeed — VEX V5RC library by team 97934U Tachyon, built on PROS 4.2.2.'
 
 # Link source files back to GitHub
 gh_repo: https://github.com/beckettfleming/Lightspeed-Lib
