@@ -57,8 +57,8 @@ namespace {
 // would fight over the same physical motors.
 std::optional<lightspeed::hal::MotorGroup> gLeftDrive;
 std::optional<lightspeed::hal::MotorGroup> gRightDrive;
-std::optional<lightspeed::hal::MotorGroup> gIntakeFront;
-std::optional<lightspeed::hal::MotorGroup> gIntakeRear;
+std::optional<lightspeed::hal::MotorGroup> gWinchFront;
+std::optional<lightspeed::hal::MotorGroup> gWinchRear;
 std::optional<lightspeed::control::DrivetrainVelocityController> gDrivetrain;
 
 std::optional<lightspeed::hal::Imu> gPrimaryImu;
@@ -108,7 +108,7 @@ std::optional<lightspeed::vision::VisionPoseCorrector> gVisionCorrector;
 constexpr std::uint32_t kLoopPeriodMs = 10;  // ~100Hz driver-control loop
 constexpr double kDtSeconds = kLoopPeriodMs / 1000.0;
 constexpr std::uint32_t kStatusIntervalMs = 1000;  // periodic heartbeat, ~1Hz
-constexpr std::int32_t kIntakeVoltage = 12000;
+constexpr std::int32_t kWinchVoltage = 12000;
 
 double normalizeStick(std::int32_t rawAnalog) {
 	return static_cast<double>(rawAnalog) / 127.0;
@@ -124,8 +124,10 @@ void initialize() {
 
 	gLeftDrive.emplace(hal::config::kLeftDriveGroup);
 	gRightDrive.emplace(hal::config::kRightDriveGroup);
-	gIntakeFront.emplace(hal::config::kIntakeFrontGroup);
-	gIntakeRear.emplace(hal::config::kIntakeRearGroup);
+	gWinchFront.emplace(hal::config::kWinchFrontGroup);
+	gWinchRear.emplace(hal::config::kWinchRearGroup);
+	gWinchFront->setBrakeMode(pros::E_MOTOR_BRAKE_HOLD);
+	gWinchRear->setBrakeMode(pros::E_MOTOR_BRAKE_HOLD);
 	gDrivetrain.emplace(*gLeftDrive, *gRightDrive, control::kDrivetrainVelocityConfig);
 
 	gPrimaryImu.emplace(hal::config::kPrimaryImu.port);
@@ -137,13 +139,7 @@ void initialize() {
 	gRightIme.emplace(*gRightDrive, odom::kDriveImeConfig);
 	gImuSource.emplace(*gPrimaryImu, &*gSecondaryImu);
 
-	// Order must match odom::kCherenkovTopology.pods: leftForwardPod,
-	// rightForwardPod, strafePod.
-	gLeftForwardPod.emplace(*gLeftForwardRotation, odom::kCherenkovTopology.pods[0]);
-	gRightForwardPod.emplace(*gRightForwardRotation, odom::kCherenkovTopology.pods[1]);
-	gStrafePod.emplace(*gStrafeRotation, odom::kCherenkovTopology.pods[2]);
-
-	std::vector<odom::TrackingWheelSource*> pods{&*gLeftForwardPod, &*gRightForwardPod, &*gStrafePod};
+	std::vector<odom::TrackingWheelSource*> pods;
 	gOdometry.emplace(odom::kCherenkovTopology.kinematics, *gLeftIme, *gRightIme, *gImuSource, pods);
 
 	gTurnToHeading.emplace(*gDrivetrain, *gOdometry, motion::kTurnToHeadingConfig);
@@ -287,40 +283,18 @@ void opcontrol() {
 		// -- The same target-velocity path autonomous uses --
 		gDrivetrain->setTargetVelocity(leftSlewedRpm, rightSlewedRpm);
 
-		// Intake controls are direct and hold-to-run so releasing the button
-		// immediately stops both motors. L1 takes priority for opposing motion.
+		// Winch controls are direct and hold-to-run so releasing the button
+		// immediately stops both motors. L1 takes priority if both are pressed.
 		if (master.get_digital(DIGITAL_L1)) {
-			gIntakeFront->writeVoltage(kIntakeVoltage);
-			gIntakeRear->writeVoltage(-kIntakeVoltage);
-		} else if (master.get_digital(DIGITAL_B)) {
-			gIntakeFront->writeVoltage(kIntakeVoltage);
-			gIntakeRear->writeVoltage(kIntakeVoltage);
-		} else if (master.get_digital(DIGITAL_DOWN)) {
-			gIntakeFront->writeVoltage(-kIntakeVoltage);
-			gIntakeRear->writeVoltage(-kIntakeVoltage);
+			gWinchFront->writeVoltage(kWinchVoltage);
+			gWinchRear->writeVoltage(kWinchVoltage);
+		} else if (master.get_digital(DIGITAL_L2)) {
+			gWinchFront->writeVoltage(-kWinchVoltage);
+			gWinchRear->writeVoltage(-kWinchVoltage);
 		} else {
-			gIntakeFront->writeVoltage(0);
-			gIntakeRear->writeVoltage(0);
+			gWinchFront->writeVoltage(0);
+			gWinchRear->writeVoltage(0);
 		}
-
-		// Suppressed while the L1 macro is running, so a direct press
-		// doesn't fight the macro's own moveToPreset() calls.
-		if (!gButtonMacroRunner.isRunning()) {
-			if (master.get_digital_new_press(DIGITAL_R1)) {
-				gExampleArm->moveToPreset("HIGH");
-			}
-			if (master.get_digital_new_press(DIGITAL_R2)) {
-				gExampleArm->moveToPreset("LOW");
-			}
-		}
-
-		// L1 runs the demo arm-cycle macro without blocking this loop.
-		// TODO: L1 is double-bound (intakes above, macro here) -- rebind
-		// once a real mechanism replaces the demo arm.
-		if (master.get_digital_new_press(DIGITAL_L1)) {
-			gButtonMacroRunner.trigger(*gDemoArmMacro);
-		}
-		gButtonMacroRunner.update();
 
 		if (accelLimit != previousAccelLimit) {
 			std::printf("[opcontrol] accel limit changed: %.0f -> %.0f RPM/s (exampleArm.isExtended=%s)\n",

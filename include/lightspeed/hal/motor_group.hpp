@@ -41,6 +41,8 @@ public:
     // Clamped to the V5 motor's supported range (+-12000 mV).
     void writeVoltage(std::int32_t millivolts) const;
 
+    void setBrakeMode(pros::motor_brake_mode_e_t mode) const;
+
     // Deliberately coarse: `disconnected` is reported the instant even ONE
     // motor drops out. Callers that need to tell a partial failure from a
     // total one must use getConnectedMotorCount() alongside this, not

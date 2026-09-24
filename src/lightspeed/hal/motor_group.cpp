@@ -49,6 +49,10 @@ void MotorGroup::writeVoltage(std::int32_t millivolts) const {
     group_.move_voltage(clamped);
 }
 
+void MotorGroup::setBrakeMode(pros::motor_brake_mode_e_t mode) const {
+    group_.set_brake_mode_all(mode);
+}
+
 HealthStatus MotorGroup::getHealth() const {
     // Checked first: a disconnected motor reports PROS_ERR_F (infinity) for
     // temperature, which would otherwise also look "not over temp" and

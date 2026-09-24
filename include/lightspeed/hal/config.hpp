@@ -27,7 +27,7 @@ inline constexpr std::int8_t kLeftDriveRear = 9;
 inline constexpr std::int8_t kRightDriveFront = -2;  // reversed
 inline constexpr std::int8_t kRightDriveRear = -10;  // reversed
 inline constexpr std::int8_t kWinchFront = 3;
-inline constexpr std::int8_t kWinchRear =  6;
+inline constexpr std::int8_t kWinchRear =  -6;
 
 // Odometry: dual IMU only, no tracking-wheel pods -- see
 // odom::kOdometryTopology (pods left empty) and lightspeed::odom for how
@@ -72,15 +72,15 @@ inline const MotorGroupConfig kRightDriveGroup{
     pros::v5::MotorUnits::degrees,
 };
 
-inline const MotorGroupConfig kIntakeFrontGroup{
-    "intakeFrontGroup",
+inline const MotorGroupConfig kWinchFrontGroup{
+    "winchFrontGroup",
     {port::kWinchFront},
     pros::v5::MotorGears::green,
     pros::v5::MotorUnits::degrees,
 };
 
-inline const MotorGroupConfig kIntakeRearGroup{
-    "intakeRearGroup",
+inline const MotorGroupConfig kWinchRearGroup{
+    "winchRearGroup",
     {port::kWinchRear},
     pros::v5::MotorGears::green,
     pros::v5::MotorUnits::degrees,
