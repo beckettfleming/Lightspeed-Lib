@@ -17,11 +17,7 @@
 
 namespace lightspeed::driver {
 
-<<<<<<< Updated upstream
 inline constexpr DriveMode kDriveMode = DriveMode::arcade;  // TODO: pick tank/arcade for the robot
-=======
-inline constexpr DriveMode kDriveMode = DriveMode::arcade;  // TODO: pick tank/arcade for Cherenkov
->>>>>>> Stashed changes
 
 inline const InputProfileConfig kInputProfileConfig{
     .curveExponent = 1.3,  // TODO: tune -- higher = softer low-speed response
@@ -30,11 +26,7 @@ inline const InputProfileConfig kInputProfileConfig{
 
 // Matches the ~343 RPM top-speed reference already assumed by
 // control::kDrivetrainVelocityConfig's kV (see that file) -- both should be
-<<<<<<< Updated upstream
 // confirmed/tuned together against the actual drivetrain.
-=======
-// confirmed/tuned together against Cherenkov's actual drivetrain.
->>>>>>> Stashed changes
 inline constexpr double kMaxDriveRpm = 343.0;
 
 inline const AccelLimitConfig kDriveAccelLimitConfig{

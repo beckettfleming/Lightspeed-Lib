@@ -16,14 +16,9 @@ namespace lightspeed::odom {
 
 enum class PodRole : std::uint8_t { forward, strafe };
 
-//<<<<<<< Updated upstream
-// This drivetrain is tank; holonomic has a stub fallback path in
-// OdometryFusion, not a dead enumerator.
-//=======
 // Cherenkov is Tank. The field exists so the topology config and resolver
 // logic don't assume a specific drivetrain -- Holonomic is a recognized
 // value with a stub fallback path (see OdometryFusion), not a dead enumerator.
-//>>>>>>> Stashed changes
 enum class DrivetrainKinematics : std::uint8_t { tank, holonomic };
 
 // Declaration order IS confidence rank, best to worst -- which is what lets
