@@ -22,20 +22,25 @@ namespace lightspeed::hal::config {
 // TODO: confirm actual port wiring once drivetrain is wired.
 namespace port {
 
-inline constexpr std::int8_t kLeftDriveFront = 1;
-inline constexpr std::int8_t kLeftDriveRear = 9;
-inline constexpr std::int8_t kRightDriveFront = -2;  // reversed
-inline constexpr std::int8_t kRightDriveRear = -10;  // reversed
-inline constexpr std::int8_t kWinchFront = 3;
-inline constexpr std::int8_t kWinchRear =  -6;
+inline constexpr std::int8_t kLeftDriveFront = 0;
+inline constexpr std::int8_t kLeftDriveRear = 8;
+inline constexpr std::int8_t kRightDriveFront = 0; 
+inline constexpr std::int8_t kRightDriveRear = 9; 
+inline constexpr std::int8_t kWinchFront = 0;
+inline constexpr std::int8_t kWinchRear = 10; 
+inline constexpr std::int8_t kArm = 7;
+inline constexpr std::int8_t kClaw = 5;
+inline constexpr std::int8_t kIntake = 1;
+
+
 
 // Odometry: dual IMU only, no tracking-wheel pods -- see
 // odom::kOdometryTopology (pods left empty) and lightspeed::odom for how
 // IME + dual-IMU fusion works with zero pods configured.
 // TODO: ports unknown -- confirm once the IMUs are actually mounted on
 // the robot; these are unwired placeholders.
-inline constexpr std::uint8_t kPrimaryImu = 7;
-inline constexpr std::uint8_t kSecondaryImu = 10;
+inline constexpr std::uint8_t kPrimaryImu = 4;
+inline constexpr std::uint8_t kSecondaryImu = 7;
 
 // DEMO/PLACEHOLDER -- lightspeed::subsystem::demo::ExampleArm validates the
 // subsystem framework and is not a real mechanism. Reuse or remove
