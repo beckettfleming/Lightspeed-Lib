@@ -320,7 +320,7 @@ void opcontrol() {
 		//func (short for function)
 
 		//Intake
-		if(driver.)
+		//if(driver.)
 
 		pros::delay(kLoopPeriodMs);
 	}
