@@ -22,13 +22,13 @@ namespace lightspeed::hal::config {
 // TODO: confirm actual port wiring once drivetrain is wired.
 namespace port {
 
-inline constexpr std::int8_t kLeftDriveFront = 0;
+inline constexpr std::int8_t kLeftDriveFront = 2;
 inline constexpr std::int8_t kLeftDriveRear = 8;
-inline constexpr std::int8_t kRightDriveFront = 0; 
+inline constexpr std::int8_t kRightDriveFront = 3; 
 inline constexpr std::int8_t kRightDriveRear = 9; 
-inline constexpr std::int8_t kWinchFront = 0;
+inline constexpr std::int8_t kWinchFront = 4;
 inline constexpr std::int8_t kWinchRear = 10; 
-inline constexpr std::int8_t kArm = 7;
+inline constexpr std::int8_t kArm = 6;
 inline constexpr std::int8_t kClaw = 5;
 inline constexpr std::int8_t kIntake = 1;
 
@@ -39,8 +39,8 @@ inline constexpr std::int8_t kIntake = 1;
 // IME + dual-IMU fusion works with zero pods configured.
 // TODO: ports unknown -- confirm once the IMUs are actually mounted on
 // the robot; these are unwired placeholders.
-inline constexpr std::uint8_t kPrimaryImu = 4;
-inline constexpr std::uint8_t kSecondaryImu = 7;
+inline constexpr std::uint8_t kPrimaryImu = 7;
+inline constexpr std::uint8_t kSecondaryImu = 17;
 
 // DEMO/PLACEHOLDER -- lightspeed::subsystem::demo::ExampleArm validates the
 // subsystem framework and is not a real mechanism. Reuse or remove
@@ -87,6 +87,27 @@ inline const MotorGroupConfig kWinchFrontGroup{
 inline const MotorGroupConfig kWinchRearGroup{
     "winchRearGroup",
     {port::kWinchRear},
+    pros::v5::MotorGears::green,
+    pros::v5::MotorUnits::degrees,
+};
+
+inline const MotorGroupConfig kArmGroup{
+    "armGroup",
+    {port::kArm},
+    pros::v5::MotorGears::red,
+    pros::v5::MotorUnits::degrees,
+};
+
+inline const MotorGroupConfig kClawGroup{
+    "clawGroup",
+    {port::kClaw},
+    pros::v5::MotorGears::green,
+    pros::v5::MotorUnits::degrees,
+};
+
+inline const MotorGroupConfig kIntakeGroup{
+    "intakeGroup",
+    {port::kIntake},
     pros::v5::MotorGears::green,
     pros::v5::MotorUnits::degrees,
 };

@@ -59,6 +59,10 @@ std::optional<lightspeed::hal::MotorGroup> gLeftDrive;
 std::optional<lightspeed::hal::MotorGroup> gRightDrive;
 std::optional<lightspeed::hal::MotorGroup> gWinchFront;
 std::optional<lightspeed::hal::MotorGroup> gWinchRear;
+std::optional<lightspeed::hal::MotorGroup> gArm;
+std::optional<lightspeed::hal::MotorGroup> gClaw;
+std::optional<lightspeed::hal::MotorGroup> gIntake;
+
 std::optional<lightspeed::control::DrivetrainVelocityController> gDrivetrain;
 
 std::optional<lightspeed::hal::Imu> gPrimaryImu;
@@ -126,6 +130,9 @@ void initialize() {
 	gRightDrive.emplace(hal::config::kRightDriveGroup);
 	gWinchFront.emplace(hal::config::kWinchFrontGroup);
 	gWinchRear.emplace(hal::config::kWinchRearGroup);
+	gArm.emplace(hal::config::kArmGroup);
+	gClaw.emplace(hal::config::kClawGroup);
+	gIntake.emplace(hal::config::kIntakeGroup);
 	gWinchFront->setBrakeMode(pros::E_MOTOR_BRAKE_HOLD);
 	gWinchRear->setBrakeMode(pros::E_MOTOR_BRAKE_HOLD);
 	gDrivetrain.emplace(*gLeftDrive, *gRightDrive, control::kDrivetrainVelocityConfig);
@@ -310,6 +317,10 @@ void opcontrol() {
 			            subsystem::demo::toString(gExampleArm->getState()));
 			previousStatusTime = now;
 		}
+		//func (short for function)
+
+		//Intake
+		if(driver.)
 
 		pros::delay(kLoopPeriodMs);
 	}
