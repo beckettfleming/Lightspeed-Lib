@@ -269,10 +269,10 @@ void opcontrol() {
 		    .rightX = -normalizeStick(master.get_analog(ANALOG_RIGHT_X)),
 		};
 		const driver::JoystickInput profiledInput{
-		    .leftY = gInputProfile->apply(rawInput.leftY),
-		    .leftX = gInputProfile->apply(rawInput.leftX),
-		    .rightY = gInputProfile->apply(rawInput.rightY),
-		    .rightX = gInputProfile->apply(rawInput.rightX),
+		    .leftY = gInputProfile->apply(rawInput.rightX),
+		    .leftX = gInputProfile->apply(rawInput.rightY),
+		    .rightY = gInputProfile->apply(rawInput.leftX),
+		    .rightX = gInputProfile->apply(rawInput.leftY),
 		};
 
 		// -- Drive-mode transform --
@@ -293,10 +293,10 @@ void opcontrol() {
 		// Winch controls are direct and hold-to-run so releasing the button
 		// immediately stops both motors. L1 takes priority if both are pressed.
 		if (master.get_digital(DIGITAL_L1)) {
-			gWinchFront->writeVoltage(kWinchVoltage);
+			gWinchFront->writeVoltage(-kWinchVoltage);
 			gWinchRear->writeVoltage(kWinchVoltage);
 		} else if (master.get_digital(DIGITAL_L2)) {
-			gWinchFront->writeVoltage(-kWinchVoltage);
+			gWinchFront->writeVoltage(kWinchVoltage);
 			gWinchRear->writeVoltage(-kWinchVoltage);
 		} else {
 			gWinchFront->writeVoltage(0);
