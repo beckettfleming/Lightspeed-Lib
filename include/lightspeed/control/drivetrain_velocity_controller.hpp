@@ -3,9 +3,8 @@
  *
  * Voltage-based velocity control for one drivetrain (left + right side),
  * built from PIDFController and SlewRateLimiter on top of hal::MotorGroup.
- * Runs its own ~100Hz control task. Every drivetrain command in the project
- * -- driver control and every motion primitive -- funnels through
- * setTargetVelocity().
+ * Runs its own ~100Hz control task. Velocity targets and coast requests are
+ * asynchronous, so callers never wait for motor updates.
  *
  * Docs: https://beckettfleming.github.io/Lightspeed-Lib/layers/control/
  */
@@ -56,12 +55,16 @@ public:
     // control task picks up the latest value each cycle.
     void setTargetVelocity(double leftRpm, double rightRpm);
 
+    // Requests zero voltage until the next velocity target. This is
+    // non-blocking; the control task applies it on its next cycle.
+    void coast();
+
 private:
     void controlLoop();
     // isLeftSide selects which of two fixed telemetry channel-name pairs
     // this call records under.
     void updateSide(hal::MotorGroup& motors, PIDFController& pidf, SlewRateLimiter& slew, double targetRpm, double dtSeconds,
-                     bool isLeftSide) const;
+                     bool isLeftSide);
 
     hal::MotorGroup& left_;
     hal::MotorGroup& right_;
@@ -74,6 +77,7 @@ private:
 
     std::atomic<double> leftTargetRpm_{0.0};
     std::atomic<double> rightTargetRpm_{0.0};
+    std::atomic<bool> coastRequested_{false};
 
     // Must be declared last: its initializer starts the control task, which
     // reads every other member above and must see them fully constructed.

@@ -66,20 +66,20 @@ Currently defined:
 
 | Config | Ports | Gearset | Purpose |
 |---|---|---|---|
-| `kLeftDriveGroup` | 1, 9 | blue (600 RPM) | Left drivetrain side |
-| `kRightDriveGroup` | -2, -10 | blue (600 RPM) | Right drivetrain side |
-| `kIntakeFrontGroup` | 4 | green (200 RPM) | Front intake |
-| `kIntakeRearGroup` | 5 | green (200 RPM) | Rear intake |
-| `kExampleArmGroup` | 12 | green (200 RPM) | Demo subsystem (placeholder) |
+| `kLeftDriveGroup` | 4, 5, 6 | blue (600 RPM) | Left drivetrain side |
+| `kRightDriveGroup` | 1, 2, 3 | blue (600 RPM) | Right drivetrain side |
+| `kWinchLeftGroup` | -11 | green (200 RPM) | Reversed left winch |
+| `kWinchRightGroup` | 13 | green (200 RPM) | Right winch |
+| `kIntakeGroup` | -12 | green (200 RPM) | Reversed intake |
 
-The drive gearset assumes **blue 6:1 (600 RPM) cartridges with an external reduction to roughly
-343 RPM at the wheel.** That 343 number recurs in three other files — see
-[Configuration Reference]({{ site.baseurl }}/reference/configuration/) for why they must all be changed together.
+Rotation sensors on ports 7 and 8 are configured separately for the forward
+and sideways odometry pods. The IMUs use ports 9 and 10. The blue drive motors
+use a 3:4 external reduction, for 450 wheel RPM.
 
 ### Adding a new device
 
 1. Add its port constant to the `port` namespace.
-2. Add a `MotorGroupConfig` (or `ImuConfig` / `RotationSensorConfig` / `AiVisionConfig`) below it.
+2. Add a `MotorGroupConfig`, `ImuConfig`, or `RotationSensorConfig` below it.
 3. Construct the HAL wrapper from that config in `initialize()` in `src/main.cpp`.
 
 That's it — no other file needs to learn about the port.
@@ -217,7 +217,7 @@ Wraps the VEX AI Vision Sensor, filtered to **AprilTag detections only**. Color,
 AI-object detection modes are never enabled — the vision layer only needs tags.
 
 ```cpp
-hal::AiVisionSensor camera(hal::config::kAiVisionSensor);
+hal::AiVisionSensor camera(aiVisionConfig);
 
 hal::TagDetectionList tags = camera.getDetectedTags();
 for (std::uint8_t i = 0; i < tags.count; ++i) {
@@ -234,8 +234,8 @@ Turning corners into a bearing, distance, and skew is `vision::solveRelativePose
 - The internal `pros::AIVision` member is `mutable` because PROS's read methods aren't
   `const`-qualified, even though they're plain reads.
 
-The tag family is set in `config.hpp` (`kAiVisionSensor.tagFamily`, currently `tag_16H5`) and
-needs confirming against the season's actual field elements.
+The AI Vision Sensor is not configured for the current robot. To use one,
+provide an `AiVisionConfig` with its port and tag family.
 
 ---
 

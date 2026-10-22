@@ -33,24 +33,24 @@ No class hardcodes a magic number. This page is the map.
 This is the part that bites people. Several physical facts about the robot are expressed in more
 than one file, and they must stay consistent.
 
-### 1. The drivetrain top speed (currently 343 RPM)
+### 1. The drivetrain gearing
 
 ```
-   Real gearing: blue 600 RPM cartridge, geared down to ~343 RPM at the wheel
+   Real gearing: blue 600 RPM cartridge, 3:4 reduction, 450 RPM at the wheel
                                 |
         +-----------------------+-----------------------+------------------+
         v                       v                       v                  v
   odom::kDriveImeConfig   motion::k...Kinematics   driver::kMaxDriveRpm   control::...pidf.kV
-      .gearRatio               .gearRatio             = 343.0              = 35.0
-    = 343.0/600.0            = 343.0/600.0                              (~12000mV / 343rpm)
+      .gearRatio               .gearRatio             = 600.0              = 20.0
+    = 3.0/4.0                = 3.0/4.0                                  (~12000mV / 600rpm)
 ```
 
 | Where | Value | Meaning |
 |---|---|---|
-| `odom::kDriveImeConfig.gearRatio` | `343.0/600.0` | Odometry's distance conversion |
-| `motion::kDrivetrainKinematics.gearRatio` | `343.0/600.0` | Motion's speed conversion |
-| `driver::kMaxDriveRpm` | `343.0` | Full-stick target |
-| `control::kDrivetrainVelocityConfig.pidf.kV` | `35.0` | ≈ 12000 mV / 343 RPM |
+| `odom::kDriveImeConfig.gearRatio` | `3.0/4.0` | Odometry's distance conversion |
+| `motion::kCherenkovKinematics.gearRatio` | `3.0/4.0` | Motion's speed conversion |
+| `driver::kMaxDriveRpm` | `600.0` | Full-stick motor RPM target |
+| `control::kDrivetrainVelocityConfig.pidf.kV` | `20.0` | ≈ 12000 mV / 600 motor RPM |
 
 **Change your gearing and all four must change.** Getting `gearRatio` wrong in only one place
 gives you odometry that disagrees with motion — the robot thinks it drove 20 inches when it drove
@@ -98,16 +98,19 @@ own hardware constants) and won't change unless VEX ships a different brain.
 
 ```cpp
 namespace port {
-inline constexpr std::int8_t  kLeftDriveFront  =   1;
-inline constexpr std::int8_t  kLeftDriveRear   =   9;
-inline constexpr std::int8_t  kRightDriveFront =  -2;   // negative = reversed
-inline constexpr std::int8_t  kRightDriveRear  = -10;   // negative = reversed
-inline constexpr std::int8_t  kIntakeFront     =   4;
-inline constexpr std::int8_t  kIntakeRear      =   5;
-inline constexpr std::uint8_t kPrimaryImu      =   3;
-inline constexpr std::uint8_t kSecondaryImu    =   8;
-inline constexpr std::int8_t  kExampleArmMotor =  12;   // demo placeholder
-inline constexpr std::uint8_t kAiVisionSensor  =  13;
+inline constexpr std::int8_t  kRightDriveFront  = 1;
+inline constexpr std::int8_t  kRightDriveMiddle = 2;
+inline constexpr std::int8_t  kRightDriveRear   = 3;
+inline constexpr std::int8_t  kLeftDriveFront   = 4;
+inline constexpr std::int8_t  kLeftDriveMiddle  = 5;
+inline constexpr std::int8_t  kLeftDriveRear    = 6;
+inline constexpr std::int8_t  kForwardPodRotation = 7;
+inline constexpr std::int8_t  kSidewaysPodRotation = 8;
+inline constexpr std::uint8_t kPrimaryImu       = 9;
+inline constexpr std::uint8_t kSecondaryImu     = 10;
+inline constexpr std::int8_t  kWinchLeft        = -11; // negative = reversed
+inline constexpr std::int8_t  kIntake           = -12; // negative = reversed
+inline constexpr std::int8_t  kWinchRight       = 13;
 }
 ```
 
@@ -118,14 +121,14 @@ Motor groups pair ports with a gearset and encoder units:
 
 | Group | Ports | Gearset |
 |---|---|---|
-| `kLeftDriveGroup` | 1, 9 | blue (600 RPM) |
-| `kRightDriveGroup` | -2, -10 | blue (600 RPM) |
-| `kIntakeFrontGroup` | 4 | green (200 RPM) |
-| `kIntakeRearGroup` | 5 | green (200 RPM) |
-| `kExampleArmGroup` | 12 | green (200 RPM) |
+| `kLeftDriveGroup` | 4, 5, 6 | blue (600 RPM) |
+| `kRightDriveGroup` | 1, 2, 3 | blue (600 RPM) |
+| `kWinchLeftGroup` | -11 | green (200 RPM) |
+| `kWinchRightGroup` | 13 | green (200 RPM) |
+| `kIntakeGroup` | -12 | green (200 RPM) |
 
-Also here: `kAiVisionSensor.tagFamily` (currently `tag_16H5`) — confirm against the season's
-actual field elements.
+Rotation sensors on ports 7 and 8 measure the forward and sideways tracking pods.
+The IMUs use ports 9 and 10.
 
 ---
 
@@ -156,9 +159,9 @@ actual field elements.
 
 | Field | Default | Notes |
 |---|---|---|
-| `trackWidthInches` | 12.0 | **Measure it** — scales every turn |
-| `wheelDiameterInches` | 4.0 | Must match odometry |
-| `gearRatio` | 343/600 | Must match odometry |
+| `trackWidthInches` | `275.0 / 25.4` | 275 mm; scales every turn |
+| `wheelDiameterInches` | 2.75 | Must match odometry |
+| `gearRatio` | `3.0 / 4.0` | Must match odometry |
 
 ### `kTurnToHeadingConfig`
 
@@ -221,9 +224,9 @@ actual field elements.
 | `kDriveMode` | `arcade` | `tank` / `arcade` / `curvature` — driver preference |
 | `kInputProfileConfig.curveExponent` | 1.3 | Higher = softer low-speed response |
 | `kInputProfileConfig.deadband` | 0.05 | Ignore stick drift |
-| `kMaxDriveRpm` | 343.0 | **Must match the drivetrain `kV` assumption** |
+| `kMaxDriveRpm` | 600.0 | Blue cartridge motor RPM |
 | `kDriveAccelLimitConfig.defaultMaxRpmPerSecond` | 12000.0 | Effectively unlimited |
-| `kDriveAccelLimitConfig.rules` | one demo rule | Flag name → max RPM/s |
+| `kDriveAccelLimitConfig.rules` | empty | Optional flag name → max RPM/s |
 
 ---
 

@@ -10,17 +10,10 @@ namespace lightspeed::auton::demo {
 
 namespace {
 
-// PLACEHOLDER -- see this file's header. Fires the demo arm toward its
-// "HIGH" preset without blocking (Step 4 subsystem commands already run
-// asynchronously via the scheduler), drives 24in forward concurrently,
-// waits for the arm to finish before turning, then turns to face 90deg.
+// PLACEHOLDER -- see this file's header. Drives 24in forward, then turns to
+// face 90deg.
 void runDemoStraightAndTurn(AutonomousContext& ctx) {
-    fireAndForget([&] { ctx.exampleArm.moveToPreset("HIGH"); });
-
     ctx.driveStraightDistance.run(24.0);
-
-    waitUntilSettled([&] { return ctx.exampleArm.getState() == subsystem::demo::ExampleArmState::holding; }, 2.0);
-
     ctx.turnToHeading.run(90.0);
 }
 

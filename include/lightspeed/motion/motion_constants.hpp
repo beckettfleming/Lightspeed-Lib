@@ -4,7 +4,6 @@
  * Single source of truth for the motion-control layer's tunable parameters.
  * Adjust here -- never inline in the primitives.
  *
- * TODO: every value below is a placeholder pending real tuning on Cherenkov.
  */
 
 #pragma once
@@ -17,14 +16,12 @@
 
 namespace lightspeed::motion {
 
-// Shared tank-drive geometry + unit conversion. wheelDiameterInches/gearRatio
-// match lightspeed::odom::kDriveImeConfig and
-// lightspeed::control::kDrivetrainVelocityConfig's ~343rpm assumption --
-// all three should be confirmed/tuned together against real hardware.
+// The 3:4 external reduction turns the blue cartridge's 600 motor RPM into
+// 450 wheel RPM.
 inline const DrivetrainKinematicsConfig kCherenkovKinematics{
-    .trackWidthInches = 12.0,  // TODO: confirm once the drivetrain is built
-    .wheelDiameterInches = 4.0,
-    .gearRatio = 343.0 / 600.0,
+    .trackWidthInches = 275.0 / 25.4,
+    .wheelDiameterInches = 2.75,
+    .gearRatio = 3.0 / 4.0,
 };
 
 inline const TurnToHeadingConfig kTurnToHeadingConfig{

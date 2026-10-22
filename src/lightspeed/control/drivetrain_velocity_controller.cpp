@@ -25,6 +25,11 @@ DrivetrainVelocityController::~DrivetrainVelocityController() {
 void DrivetrainVelocityController::setTargetVelocity(double leftRpm, double rightRpm) {
     leftTargetRpm_.store(leftRpm);
     rightTargetRpm_.store(rightRpm);
+    coastRequested_.store(false);
+}
+
+void DrivetrainVelocityController::coast() {
+    coastRequested_.store(true);
 }
 
 void DrivetrainVelocityController::controlLoop() {
@@ -34,13 +39,23 @@ void DrivetrainVelocityController::controlLoop() {
     while (true) {
         pros::Task::delay_until(&previousTime, config_.loopPeriodMs);
 
+        if (coastRequested_.load()) {
+            leftPidf_.reset();
+            rightPidf_.reset();
+            leftSlew_.reset(0.0);
+            rightSlew_.reset(0.0);
+            left_.writeVoltage(0);
+            right_.writeVoltage(0);
+            continue;
+        }
+
         updateSide(left_, leftPidf_, leftSlew_, leftTargetRpm_.load(), dtSeconds, true);
         updateSide(right_, rightPidf_, rightSlew_, rightTargetRpm_.load(), dtSeconds, false);
     }
 }
 
 void DrivetrainVelocityController::updateSide(hal::MotorGroup& motors, PIDFController& pidf, SlewRateLimiter& slew,
-                                               double targetRpm, double dtSeconds, bool isLeftSide) const {
+                                               double targetRpm, double dtSeconds, bool isLeftSide) {
     const double measuredRpm = motors.getVelocityRpm();
     const hal::HealthStatus health = motors.getHealth();
 
@@ -102,7 +117,11 @@ void DrivetrainVelocityController::updateSide(hal::MotorGroup& motors, PIDFContr
     const double compensatedMv = slewedOutputMv * compensationRatio;
 
     const double clampedMv = std::clamp(compensatedMv, -12000.0, 12000.0);
-    motors.writeVoltage(static_cast<std::int32_t>(clampedMv));
+    if (coastRequested_.load()) {
+        motors.writeVoltage(0);
+    } else {
+        motors.writeVoltage(static_cast<std::int32_t>(clampedMv));
+    }
 }
 
 }  // namespace lightspeed::control

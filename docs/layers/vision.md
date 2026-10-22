@@ -265,9 +265,9 @@ inline constexpr std::uint32_t kVisionBenchTestLoopPeriodMs = 100;
 
 In order:
 
-1. **Mount the sensor** and set its port in `hal/config.hpp`.
-2. **Confirm the tag family** (`kAiVisionSensor.tagFamily`, currently `tag_16H5`) against what
-   the season's field elements actually use.
+1. **Mount the sensor** and supply its port and tag family through `AiVisionConfig`.
+2. **Confirm the tag family** against what the season's field elements actually use. The current
+   robot configuration does not include an AI Vision Sensor.
 3. **Calibrate the camera** — get the real focal length and principal point from its factory
    calibration or a checkerboard pass.
 4. **Measure the mount offset** from the robot's tracking center.

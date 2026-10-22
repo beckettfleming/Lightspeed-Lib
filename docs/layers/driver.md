@@ -224,7 +224,7 @@ inline const InputProfileConfig kInputProfileConfig{
     .deadband = 0.05,
 };
 
-inline constexpr double kMaxDriveRpm = 343.0;   // ⚠️ should be the cartridge RPM
+inline constexpr double kMaxDriveRpm = 600.0;   // blue cartridge motor RPM
 
 inline const AccelLimitConfig kDriveAccelLimitConfig{
     .defaultMaxRpmPerSecond = 2000.0,   // basically no limit

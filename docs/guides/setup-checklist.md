@@ -25,19 +25,12 @@ Filling one in means editing the named constant at the named location — nothin
 
 Every raw port number in the codebase lives in this one file.
 
-- [ ] **Drive motor ports** — `kLeftDriveFront` (1), `kLeftDriveRear` (9),
-      `kRightDriveFront` (-2), `kRightDriveRear` (-10). Confirm once the drivetrain is wired.
-      Remember: a **negative** port reverses that motor.
-- [ ] **Intake ports** — `kIntakeFront` (4), `kIntakeRear` (5).
-- [ ] **IMU ports** — `kPrimaryImu` (3), `kSecondaryImu` (8). These are currently **unwired
-      placeholders**; confirm once the IMUs are mounted.
-- [ ] **AI Vision Sensor port** — `kAiVisionSensor` (13). Confirm once mounted.
-- [ ] **AprilTag family** — `kAiVisionSensor.tagFamily` (currently `tag_16H5`). Confirm against
-      the season's actual field elements.
-- [ ] **Drive gearset** — `kLeftDriveGroup` / `kRightDriveGroup` currently assume blue
-      (6:1, 600 RPM) cartridges with an external reduction to ~343 RPM output.
-- [ ] **`kExampleArmMotor`** (12) — reuse or remove once a real subsystem replaces the demo
-      (see §6).
+- [x] **Drive motor ports** — right front/middle/rear: 1/2/3; left front/middle/rear:
+      4/5/6, following the port map in `hal/config.hpp`.
+- [x] **Tracking pod ports** — forward rotation sensor (7), sideways rotation sensor (8).
+- [x] **IMU ports** — `kPrimaryImu` (9), `kSecondaryImu` (10).
+- [x] **Winch/intake ports** — left winch (11), intake (12), right winch (13).
+- [x] **Drive gearset** — blue 600 RPM cartridges with a 3:4 external reduction (450 wheel RPM).
 
 ---
 
@@ -46,27 +39,22 @@ Every raw port number in the codebase lives in this one file.
 **Files:** [`odom/odometry_constants.hpp`](https://github.com/beckettfleming/Lightspeed-Lib/blob/main/include/lightspeed/odom/odometry_constants.hpp),
 [`motion/motion_constants.hpp`](https://github.com/beckettfleming/Lightspeed-Lib/blob/main/include/lightspeed/motion/motion_constants.hpp)
 
-- [ ] **`trackWidthInches`** (currently 12.0) — measure the distance between the left and right
-      wheel contact patches. **This directly scales every turn**; a wrong value cannot be fixed
-      by tuning gains.
-- [ ] **`wheelDiameterInches`** (currently 4.0, the robot's drive omnis) — confirm. Appears in
+- [x] **`trackWidthInches`** — 275 mm (`275.0 / 25.4` in). **This directly scales every turn**.
+- [x] **`wheelDiameterInches`** — 2.75 for the drive wheels. Appears in
       **both** `odom::kDriveImeConfig` and `motion::kDrivetrainKinematics`; they must match.
-- [ ] **`gearRatio`** (currently 343/600) — confirm the actual external reduction. Also appears
-      in both files, and implies `driver::kMaxDriveRpm` and the drivetrain's `kV`. See
-      [Configuration Reference §1]({{ site.baseurl }}/reference/configuration/#1-the-drivetrain-top-speed-currently-343-rpm).
+- [x] **`gearRatio`** — 3/4 external reduction. Also appears in both files; motor RPM remains
+      600 for `driver::kMaxDriveRpm`. See
+      [Configuration Reference §1]({{ site.baseurl }}/reference/configuration/#1-the-drivetrain-gearing).
 
-### If you add tracking wheels later
+### Tracking wheels
 
-`kOdometryTopology.pods` is intentionally **empty** — this robot runs on drive encoders plus dual
-IMU. The full pod machinery is built and ready. If pods get added:
+`kCherenkovTopology.pods` has one forward and one sideways pod, with dual-IMU heading:
 
-- [ ] Add their Rotation Sensor ports to `hal/config.hpp`.
-- [ ] Add a `PodConfig` per pod: name, role, measured `offsetInches`, and `ticksToInches`
-      (= wheel circumference / 36000).
-- [ ] Construct `hal::RotationSensor` + `TrackingWheelSource` per pod in `initialize()` and pass
-      the pointers to `OdometryFusion` instead of the empty vector.
-- [ ] **Verify each `offsetInches` sign** by rotating in place — if x/y drift during a pure
-      rotation, a sign is flipped. See [Coordinate System]({{ site.baseurl }}/reference/coordinates/).
+- [x] Pod rotation sensors are on ports 7 and 8; wheels are 2 in diameter.
+- [x] Forward pod offset is 0; sideways pod offset is +1.5 in based on the tracking center being
+      1.5 in behind the assumed geometric-center pod location.
+- [ ] Verify pod direction and offset on the robot by rotating in place. See
+      [Coordinate System]({{ site.baseurl }}/reference/coordinates/).
 
 ---
 
@@ -99,7 +87,7 @@ real match data says otherwise.
 
 ### [`driver/driver_control_constants.hpp`](https://github.com/beckettfleming/Lightspeed-Lib/blob/main/include/lightspeed/driver/driver_control_constants.hpp)
 
-- [ ] `kMaxDriveRpm` (343.0) — tied to real gearing; confirm together with the drivetrain `kV`
+- [x] `kMaxDriveRpm` (600.0 motor RPM) — tied to the blue cartridge and drivetrain `kV`
 - [ ] `kDriveAccelLimitConfig.defaultMaxRpmPerSecond` (12000.0)
 - [ ] `kDriveMode` and `curveExponent` — **driver preference**, not a measurement
 

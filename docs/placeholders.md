@@ -17,31 +17,23 @@ All in [`include/lightspeed/hal/config.hpp`](../include/lightspeed/hal/config.hp
 
 - [ ] **Drive motor ports** — `kLeftDriveFront/Middle/Back`,
   `kRightDriveFront/Middle/Back`. Set once the drivetrain is wired.
-- [ ] **Tracking wheel and IMU ports** — `kLeftForwardPodRotation`,
-  `kRightForwardPodRotation`, `kStrafePodRotation`, `kPrimaryImu`,
-  `kSecondaryImu`. The placeholder assumes 2 forward pods, 1 strafe pod, and 2
-  IMUs. If yours is different, also update `odometry_constants.hpp` and
-  `main.cpp` (see the [porting guide](porting.md#step-3--tracking-wheels-and-inertial-sensors)).
-- [ ] **Demo arm port** — `kExampleArmMotor`. Reuse or remove when a real
-  mechanism replaces the demo arm (see §6).
-- [ ] **AI Vision port** — `kAiVisionSensor`. Set once the camera is mounted.
-- [ ] **AprilTag family** — `kAiVisionSensor`'s `tag_16H5` is a guess. Set it to
-  the family the season's field uses.
-- [ ] **Drive cartridge** — `kLeftDriveGroup` / `kRightDriveGroup`. The
-  placeholder assumes blue (600 RPM) motors with extra gearing down to about
-  343 RPM at the wheel.
+- [x] **Drive motor ports** — right front/middle/rear 1/2/3; left front/middle/rear 4/5/6.
+- [x] **Tracking pod ports** — forward 7, sideways 8.
+- [x] **IMU ports** — `kPrimaryImu` (9), `kSecondaryImu` (10).
+- [x] **Winch/intake ports** — reversed left winch -11, reversed intake -12,
+  right winch 13.
+- [x] **Drive gearing** — blue 600 RPM motors with a 3:4 external reduction (450 wheel RPM).
 
 ## 2. Odometry measurements
 
 All in [`include/lightspeed/odom/odometry_constants.hpp`](../include/lightspeed/odom/odometry_constants.hpp).
 
-- [ ] **Tracking wheel size** — `kTrackingWheelDiameterInches` (currently 2 in).
-  Measure the real tracking wheel; it's not the 4 in drive wheel.
-- [ ] **Pod offsets** — `kCherenkovTopology.pods[*].offsetInches` (left forward
-  +6, right forward −6, strafe 0). Measure each once mounted. Forward pods:
-  positive = left. Strafe pods: positive = forward.
-- [ ] **Drive gear ratio** — `kDriveImeConfig.gearRatio` (343/600). Confirm the
-  real gearing.
+- [x] **Wheel diameters** — 2 in tracking wheels and 2.75 in drive wheels.
+- [x] **Pod offsets** — forward pod centered laterally (0); sideways pod +1.5 in
+  forward of the tracking center, assuming it is mounted at the robot's geometric center.
+- [x] **Drivetrain geometry** — 275 mm track width, 10 in wheelbase, tracking center
+  1.5 in behind the geometric center.
+- [x] **Drive gear ratio** — `kDriveImeConfig.gearRatio` is 3/4.
 
 ## 3. Drive and motion gains
 

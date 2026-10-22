@@ -233,18 +233,21 @@ inline constexpr double kTrackingWheelDiameterInches = 2.0;
 inline constexpr double kTrackingWheelTicksToInches =
     (kPi * kTrackingWheelDiameterInches) / 36000.0;   // centidegrees → inches
 
-inline const TopologyConfig kCherenkovTopology{ /* 2 forward pods + 1 strafe pod */ };
+inline constexpr double kRobotWheelbaseInches = 10.0;
+inline constexpr double kTrackingCenterOffsetInches = -1.5;
+
+inline const TopologyConfig kCherenkovTopology{ /* 1 forward pod + 1 strafe pod */ };
 
 inline const IMEConfig kDriveImeConfig{
-    .wheelDiameterInches = 4.0,
-    .gearRatio = 343.0 / 600.0,
+    .wheelDiameterInches = 2.75,
+    .gearRatio = 3.0 / 4.0,
 };
 ```
 
-> ⚠️ Tracking wheel size, all pod offsets, and the gear ratio are placeholders.
-> The 3-pod layout itself is a guess. See
-> [placeholders § 2](../placeholders.md#2-odometry-measurements) and the
-> [porting guide](../porting.md#step-3--tracking-wheels-and-inertial-sensors).
+The sideways pod offset is +1.5 in, assuming it is mounted at the robot's
+geometric center; the tracking center is 1.5 in behind that point. The
+10-inch wheelbase is recorded as chassis geometry; tank-drive motion uses
+track width (275 mm) rather than wheelbase.
 
 **Order matters.** `main.cpp` pairs `kCherenkovTopology.pods[0]` with the first
 Rotation sensor it builds, `pods[1]` with the second, and so on. If you reorder

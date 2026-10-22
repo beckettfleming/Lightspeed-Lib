@@ -24,20 +24,13 @@ inline const InputProfileConfig kInputProfileConfig{
     .deadband = 0.05,
 };
 
-// Matches the ~343 RPM top-speed reference already assumed by
-// control::kDrivetrainVelocityConfig's kV (see that file) -- both should be
-// confirmed/tuned together against the actual drivetrain.
-inline constexpr double kMaxDriveRpm = 343.0;
+// Blue 600 RPM motors; the external reduction is handled by drivetrain
+// kinematics when converting linear speeds to motor RPM.
+inline constexpr double kMaxDriveRpm = 600.0;
 
 inline const AccelLimitConfig kDriveAccelLimitConfig{
     .defaultMaxRpmPerSecond = 12000.0,  // TODO: tune for driver feel
-    .rules =
-        {
-            // Stand-in condition until a real subsystem flag exists: cap
-            // acceleration harder while the demo arm reports extended, the
-            // way a real lift/intake flag eventually would.
-            AccelLimitRule{.flagName = "exampleArm.isExtended", .maxRpmPerSecond = 400.0},
-        },
+    .rules = {},
 };
 
 }  // namespace lightspeed::driver

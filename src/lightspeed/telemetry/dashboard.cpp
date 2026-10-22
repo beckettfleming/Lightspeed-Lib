@@ -7,10 +7,7 @@
 
 namespace lightspeed::telemetry {
 
-using subsystem::demo::ExampleArmState;
-
-Dashboard::Dashboard(const odom::OdometryFusion& odometry, const subsystem::demo::ExampleArm& exampleArm)
-    : odometry_(odometry), exampleArm_(exampleArm) {}
+Dashboard::Dashboard(const odom::OdometryFusion& odometry) : odometry_(odometry) {}
 
 Dashboard::~Dashboard() {
     if (task_.has_value()) {
@@ -57,17 +54,6 @@ void Dashboard::draw() const {
 
     pros::screen::print(pros::E_TEXT_MEDIUM, kDashboardConfidenceLine, "Odometry confidence: %s",
                          odom::toString(odometry_.getConfidence()));
-
-    const ExampleArmState armState = exampleArm_.getState();
-    pros::screen::print(pros::E_TEXT_MEDIUM, kDashboardSubsystemLine, "exampleArm: %s",
-                         subsystem::demo::toString(armState));
-
-    const bool faulted = armState == ExampleArmState::faulted;
-    pros::screen::set_pen(faulted ? pros::Color::red : pros::Color::dark_green);
-    pros::screen::fill_rect(kDashboardFaultBoxX0, kDashboardFaultBoxY0, kDashboardFaultBoxX1, kDashboardFaultBoxY1);
-    pros::screen::set_pen(pros::Color::white);
-    pros::screen::print(pros::E_TEXT_MEDIUM, kDashboardFaultBoxX0 + 6, kDashboardFaultBoxY0 + 8,
-                         faulted ? "FAULT: exampleArm" : "No active faults");
 }
 
 }  // namespace lightspeed::telemetry

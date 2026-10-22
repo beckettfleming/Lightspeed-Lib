@@ -290,8 +290,8 @@ the selector GUI owns the screen; during autonomous nothing draws. That's by des
 
 | Check | |
 |---|---|
-| Sensor port correct? | `hal/config.hpp` |
-| Right tag family? | `kAiVisionSensor.tagFamily` (currently `tag_16H5`) |
+| Is an AI Vision Sensor configured? | Supply an `AiVisionConfig` with its port and tag family |
+| Right tag family? | Check the configured `AiVisionConfig.tagFamily` |
 | Lighting and distance | Get closer, add light |
 | Tag printed at the right size? | Must match `tagSizeInches` |
 

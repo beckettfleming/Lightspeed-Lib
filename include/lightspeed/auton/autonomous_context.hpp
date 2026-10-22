@@ -18,7 +18,6 @@
 #include "lightspeed/motion/pure_pursuit_controller.hpp"
 #include "lightspeed/motion/turn_to_heading.hpp"
 #include "lightspeed/odom/odometry_fusion.hpp"
-#include "lightspeed/subsystem/demo/example_arm.hpp"
 
 namespace lightspeed::auton {
 
@@ -30,9 +29,6 @@ struct AutonomousContext {
     motion::DriveToPoint& driveToPoint;
     motion::PurePursuitController& purePursuit;
     motion::MoveToPose& moveToPose;
-
-    // Stand-in for a real subsystem; replace once real ones exist.
-    subsystem::demo::ExampleArm& exampleArm;
 };
 
 using RoutineFunction = void (*)(AutonomousContext&);

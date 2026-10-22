@@ -23,7 +23,7 @@ inline const DrivetrainVelocityConfig kDrivetrainVelocityConfig{
             .kP = 20.0,  // mV per RPM of error. TODO: tune
             .kI = 0.0,   // TODO: tune once kP/kD are settled
             .kD = 0.0,   // TODO: tune
-            .kV = 35.0,  // mV per target RPM, ~12000mV / 343rpm output. TODO: tune
+            .kV = 20.0,  // mV per motor RPM at 12V / 600 RPM. TODO: tune
             .kA = 0.0,   // unused until motion profiling exists
             .kS = 300.0, // mV to overcome static friction. TODO: tune
             .integralZone = 0.0,      // disabled until kI is tuned

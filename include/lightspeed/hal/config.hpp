@@ -19,37 +19,32 @@ namespace lightspeed::hal::config {
 
 // Ports are 1-21; a NEGATIVE port number reverses that motor internally.
 //
-// TODO: confirm actual port wiring once drivetrain is wired.
+/* Drive Port Mapping
+RF 1
+RM 2
+RR 3
+LF 4
+LM 5
+LR 6
+*/
+
 namespace port {
 
-inline constexpr std::int8_t kLeftDriveFront = 2;
-inline constexpr std::int8_t kLeftDriveRear = 8;
-inline constexpr std::int8_t kRightDriveFront = 3; 
-inline constexpr std::int8_t kRightDriveRear = 9; 
-inline constexpr std::int8_t kWinchFront = 4;
-inline constexpr std::int8_t kWinchRear = -10; 
-inline constexpr std::int8_t kArm = 6;
-inline constexpr std::int8_t kClaw = 5;
-inline constexpr std::int8_t kIntake = 1;
+inline constexpr std::int8_t kRightDriveFront = 1;
+inline constexpr std::int8_t kRightDriveMiddle = 2;
+inline constexpr std::int8_t kRightDriveRear = 3;
+inline constexpr std::int8_t kLeftDriveFront = 4;
+inline constexpr std::int8_t kLeftDriveMiddle = 5;
+inline constexpr std::int8_t kLeftDriveRear = 6;
 
+inline constexpr std::int8_t kForwardPodRotation = 7;
+inline constexpr std::int8_t kSidewaysPodRotation = 8;
 
-
-// Odometry: dual IMU only, no tracking-wheel pods -- see
-// odom::kOdometryTopology (pods left empty) and lightspeed::odom for how
-// IME + dual-IMU fusion works with zero pods configured.
-// TODO: ports unknown -- confirm once the IMUs are actually mounted on
-// the robot; these are unwired placeholders.
-inline constexpr std::uint8_t kPrimaryImu = 7;
-inline constexpr std::uint8_t kSecondaryImu = 17;
-
-// DEMO/PLACEHOLDER -- lightspeed::subsystem::demo::ExampleArm validates the
-// subsystem framework and is not a real mechanism. Reuse or remove
-// this port once real subsystems replace the demo.
-inline constexpr std::int8_t kExampleArmMotor = 12;
-
-// AI Vision Sensor (AprilTag final-approach correction, see
-// lightspeed::vision). TODO: confirm actual port once mounted on the robot.
-inline constexpr std::uint8_t kAiVisionSensor = 13;
+inline constexpr std::uint8_t kPrimaryImu = 9;
+inline constexpr std::uint8_t kSecondaryImu = 10;
+inline constexpr std::int8_t kWinchLeft = 11;
+inline constexpr std::int8_t kIntake = -12;
+inline constexpr std::int8_t kWinchRight = 13;
 
 }  // namespace port
 
@@ -60,47 +55,30 @@ struct MotorGroupConfig {
     pros::v5::MotorUnits encoderUnits;
 };
 
-// TODO: confirm gearset once the drivetrain is built. Placeholder assumes
-// blue (6:1, 600 RPM) cartridges with an external reduction bringing output
-// to the ~343 RPM target for the drivetrain.
 inline const MotorGroupConfig kLeftDriveGroup{
     "leftDriveGroup",
-    {port::kLeftDriveFront, port::kLeftDriveRear},
+    {port::kLeftDriveFront, port::kLeftDriveMiddle, port::kLeftDriveRear},
     pros::v5::MotorGears::blue,
     pros::v5::MotorUnits::degrees,
 };
 
 inline const MotorGroupConfig kRightDriveGroup{
     "rightDriveGroup",
-    {port::kRightDriveFront, port::kRightDriveRear},
+    {port::kRightDriveFront, port::kRightDriveMiddle, port::kRightDriveRear},
     pros::v5::MotorGears::blue,
     pros::v5::MotorUnits::degrees,
 };
 
-inline const MotorGroupConfig kWinchFrontGroup{
-    "winchFrontGroup",
-    {port::kWinchFront},
+inline const MotorGroupConfig kWinchLeftGroup{
+    "winchLeftGroup",
+    {port::kWinchLeft},
     pros::v5::MotorGears::green,
     pros::v5::MotorUnits::degrees,
 };
 
-inline const MotorGroupConfig kWinchRearGroup{
-    "winchRearGroup",
-    {port::kWinchRear},
-    pros::v5::MotorGears::green,
-    pros::v5::MotorUnits::degrees,
-};
-
-inline const MotorGroupConfig kArmGroup{
-    "armGroup",
-    {port::kArm},
-    pros::v5::MotorGears::red,
-    pros::v5::MotorUnits::degrees,
-};
-
-inline const MotorGroupConfig kClawGroup{
-    "clawGroup",
-    {port::kClaw},
+inline const MotorGroupConfig kWinchRightGroup{
+    "winchRightGroup",
+    {port::kWinchRight},
     pros::v5::MotorGears::green,
     pros::v5::MotorUnits::degrees,
 };
@@ -122,28 +100,16 @@ struct ImuConfig {
     std::uint8_t port;
 };
 
-inline const ImuConfig kPrimaryImu{"primaryImu", port::kPrimaryImu};
-inline const ImuConfig kSecondaryImu{"secondaryImu", port::kSecondaryImu};
-
-// DEMO/PLACEHOLDER -- backs lightspeed::subsystem::demo::ExampleArm.
-inline const MotorGroupConfig kExampleArmGroup{
-    "exampleArmGroup",
-    {port::kExampleArmMotor},
-    pros::v5::MotorGears::green,
-    pros::v5::MotorUnits::degrees,
-};
-
-// tagFamily selects which AprilTag family to detect (the sensor otherwise
-// reports every family at once).
 struct AiVisionConfig {
     const char* name;
     std::uint8_t port;
     pros::v5::AivisionTagFamily tagFamily;
 };
 
-// TODO: confirm the actual tag family used by the season's field elements
-// once announced -- this is an arbitrary placeholder from the family list
-// pros::v5::AivisionTagFamily exposes.
-inline const AiVisionConfig kAiVisionSensor{"aiVisionSensor", port::kAiVisionSensor, pros::v5::AivisionTagFamily::tag_16H5};
+inline const ImuConfig kPrimaryImu{"primaryImu", port::kPrimaryImu};
+inline const ImuConfig kSecondaryImu{"secondaryImu", port::kSecondaryImu};
+
+inline const RotationSensorConfig kForwardPodRotation{"forwardPodRotation", port::kForwardPodRotation};
+inline const RotationSensorConfig kSidewaysPodRotation{"sidewaysPodRotation", port::kSidewaysPodRotation};
 
 }  // namespace lightspeed::hal::config

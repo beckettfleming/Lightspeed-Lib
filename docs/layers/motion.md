@@ -300,14 +300,15 @@ Shared geometry, used by every primitive:
 
 ```cpp
 inline const DrivetrainKinematicsConfig kDrivetrainKinematics{
-    .trackWidthInches = 12.0,     // TODO: confirm once the drivetrain is built
-    .wheelDiameterInches = 4.0,
-    .gearRatio = 343.0 / 600.0,
+    .trackWidthInches = 275.0 / 25.4,
+    .wheelDiameterInches = 2.75,
+    .gearRatio = 3.0 / 4.0,
 };
 ```
 
-> `wheelDiameterInches` and `gearRatio` must match `odom::kDriveImeConfig`, and the implied top
-> speed must match `driver::kMaxDriveRpm` and the drivetrain's `kV`. All four move together —
+> `wheelDiameterInches` and `gearRatio` must match `odom::kDriveImeConfig`. Driver setpoints and
+> velocity-controller feedforward use motor RPM (600 RPM for these blue cartridges); linear motion
+> converts through the 3:4 reduction.
 > see [Configuration Reference]({{ site.baseurl }}/reference/configuration/).
 
 Per-primitive configs (`kTurnToHeadingConfig`, `kDriveStraightDistanceConfig`,

@@ -260,12 +260,12 @@ always fully applied between cycles, never halfway through one.
 ```cpp
 inline const TopologyConfig kOdometryTopology{
     .kinematics = DrivetrainKinematics::tank,
-    .pods = {},                   // no tracking wheels on this robot
+    .pods = { /* one forward pod and one sideways pod */ },
 };
 
 inline const IMEConfig kDriveImeConfig{
-    .wheelDiameterInches = 4.0,   // the robot's 4in drive omnis
-    .gearRatio = 343.0 / 600.0,   // TODO: confirm the real external reduction
+    .wheelDiameterInches = 2.75,
+    .gearRatio = 3.0 / 4.0,
 };
 ```
 

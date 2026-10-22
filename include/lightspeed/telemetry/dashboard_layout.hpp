@@ -22,13 +22,5 @@ inline constexpr std::int16_t kDashboardTitleLine = 0;
 inline constexpr std::int16_t kDashboardBatteryLine = 1;
 inline constexpr std::int16_t kDashboardPoseLine = 2;
 inline constexpr std::int16_t kDashboardConfidenceLine = 3;
-inline constexpr std::int16_t kDashboardSubsystemLine = 4;
-
-// Fault indicator: a plain pixel-space rect (uses the x,y print overload
-// for its label), not a text line.
-inline constexpr std::int16_t kDashboardFaultBoxX0 = 10;
-inline constexpr std::int16_t kDashboardFaultBoxY0 = 140;
-inline constexpr std::int16_t kDashboardFaultBoxX1 = 300;
-inline constexpr std::int16_t kDashboardFaultBoxY1 = 170;
 
 }  // namespace lightspeed::telemetry
