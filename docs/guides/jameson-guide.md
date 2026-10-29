@@ -216,7 +216,7 @@ until the move is finished** (or times out) before your next line runs.
 | `ctx.driveToPoint.turnToPoint(x, y);` | Turn to face a spot on the field. |
 | `ctx.driveToPoint.driveToPoint(x, y);` | Turn to face a spot, then drive to it. |
 | `ctx.moveToPose.run(x, y, heading);` | Curve to a spot and arrive facing `heading`. Forward only. |
-| `ctx.purePursuit.follow({{x1, y1}, {x2, y2}, ...});` | Follow a smooth path through the points. Forward only. |
+| `ctx.purePursuit.follow({ {x1, y1}, {x2, y2}, ... });` | Follow a smooth path through the points. Forward only. |
 | `ctx.odometry.getPose()` | Where the robot thinks it is: `.xInches`, `.yInches`, `.headingDegrees`. |
 
 ### Units and directions — read this once
@@ -264,7 +264,7 @@ In `initialize()`, next to the demo routines:
 gRoutineRegistry.registerRoutine(auton::Routine{
     .name = "Red Left",
     .validStartLocationIndices = {},   // {} = show for every start location
-    .previewPoints = {},               // optional: {{x, y}, ...} draws the path on screen
+    .previewPoints = {},               // optional: { {x, y}, ... } draws the path on screen
     .run = runRedLeft,
 });
 ```
