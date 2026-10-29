@@ -10,6 +10,7 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 
 #include "lightspeed/hal/config.hpp"
 #include "pros/motor_group.hpp"
@@ -37,6 +38,9 @@ public:
 
     // Averaged across the group, in RPM.
     [[nodiscard]] double getVelocityRpm() const;
+
+    // Averaged across connected motors, in mA. Empty if no valid readings exist.
+    [[nodiscard]] std::optional<double> getCurrentDrawMilliAmps() const;
 
     // Clamped to the V5 motor's supported range (+-12000 mV).
     void writeVoltage(std::int32_t millivolts) const;

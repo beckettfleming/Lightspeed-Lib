@@ -33,6 +33,7 @@ one object, not two competing ones.
 
 | If you want to… | Read |
 |---|---|
+| Add motors, buttons, and an auton — just the basics | **[Jameson Guide]({{ site.baseurl }}/guides/jameson-guide/)** |
 | Build and upload the code | **[Getting Started]({{ site.baseurl }}/getting-started/)** |
 | Understand how the pieces fit together | **[Architecture]({{ site.baseurl }}/architecture/)** |
 | Change a port number, gain, or field size | **[Configuration Reference]({{ site.baseurl }}/reference/configuration/)** |

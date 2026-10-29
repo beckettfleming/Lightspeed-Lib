@@ -44,6 +44,22 @@ double MotorGroup::getVelocityRpm() const {
     return averageFinite(group_.get_actual_velocity_all());
 }
 
+std::optional<double> MotorGroup::getCurrentDrawMilliAmps() const {
+    const std::vector<std::int32_t> readings = group_.get_current_draw_all();
+    double sum = 0.0;
+    std::size_t count = 0;
+    for (std::int32_t reading : readings) {
+        if (reading >= 0) {
+            sum += reading;
+            ++count;
+        }
+    }
+    if (count == 0) {
+        return std::nullopt;
+    }
+    return sum / count;
+}
+
 void MotorGroup::writeVoltage(std::int32_t millivolts) const {
     const std::int32_t clamped = std::clamp(millivolts, -kMaxVoltageMillivolts, kMaxVoltageMillivolts);
     group_.move_voltage(clamped);

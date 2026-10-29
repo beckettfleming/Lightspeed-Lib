@@ -7,6 +7,7 @@ new to PROS, new to this codebase, or new to ideas like odometry and PID.
 
 | If you want to… | Read |
 | --- | --- |
+| Add motors, sensors, buttons, and an auton — just the basics | [Jameson Guide](guides/jameson-guide.md) |
 | Get it working with no explanations | [Easy mode](quick-start.md#easy-mode) |
 | Get it working and understand what's going on | [Quick start](quick-start.md) |
 | Learn the words used everywhere (pose, heading, PID…) | [Key ideas](concepts.md) |

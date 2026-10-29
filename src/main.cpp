@@ -38,6 +38,7 @@
 #include "lightspeed/telemetry/sd_logger.hpp"
 #include "lightspeed/telemetry/serial_link.hpp"
 #include "lightspeed/telemetry/telemetry_bus.hpp"
+#include "pros/adi.hpp"
 #include "pros/misc.hpp"
 
 namespace {
@@ -53,6 +54,16 @@ std::optional<lightspeed::hal::MotorGroup> gRightDrive;
 std::optional<lightspeed::hal::MotorGroup> gWinchLeft;
 std::optional<lightspeed::hal::MotorGroup> gWinchRight;
 std::optional<lightspeed::hal::MotorGroup> gIntake;
+std::optional<pros::adi::DigitalOut> gClawPneumatic;
+std::optional<pros::adi::DigitalOut> gHingePneumatic;
+std::optional<pros::adi::DigitalOut> gCalibratedIndicator;
+std::optional<pros::adi::DigitalOut> gCalibrationIndicator;
+bool gClawPneumaticExtended = false;
+bool gHingePneumaticExtended = false;
+double gWinchLeftStartingPosition = 0.0;
+double gWinchRightStartingPosition = 0.0;
+bool gWinchStoppedForNoLoad = false;
+std::optional<std::uint32_t> gWinchLowCurrentSince;
 
 std::optional<lightspeed::control::DrivetrainVelocityController> gDrivetrain;
 
@@ -90,6 +101,9 @@ std::optional<lightspeed::telemetry::SerialLink> gSerialLink;
 constexpr std::uint32_t kLoopPeriodMs = 10;  // ~100Hz driver-control loop
 constexpr double kDtSeconds = kLoopPeriodMs / 1000.0;
 constexpr std::uint32_t kStatusIntervalMs = 1000;  // periodic heartbeat, ~1Hz
+constexpr std::uint32_t kWinchNoLoadConfirmMs = 200;
+constexpr double kWinchNoLoadCurrentMilliAmps = 500.0;
+constexpr double kWinchPositionToleranceDegrees = 1.0;
 constexpr std::int32_t kWinchVoltage = 12000;
 constexpr std::int32_t kIntakeVoltage = 12000;
 
@@ -110,14 +124,26 @@ void initialize() {
 	gWinchLeft.emplace(hal::config::kWinchLeftGroup);
 	gWinchRight.emplace(hal::config::kWinchRightGroup);
 	gIntake.emplace(hal::config::kIntakeGroup);
+	gClawPneumatic.emplace(hal::config::adi_port::kClawPneumatic);
+	gHingePneumatic.emplace(hal::config::adi_port::kHingePneumatic);
+	gCalibratedIndicator.emplace(hal::config::adi_port::kCalibratedIndicator);
+	gCalibrationIndicator.emplace(hal::config::adi_port::kCalibrationIndicator);
 	gWinchLeft->setBrakeMode(pros::E_MOTOR_BRAKE_HOLD);
 	gWinchRight->setBrakeMode(pros::E_MOTOR_BRAKE_HOLD);
+	gWinchLeftStartingPosition = gWinchLeft->getPositionRaw();
+	gWinchRightStartingPosition = gWinchRight->getPositionRaw();
 	gDrivetrain.emplace(*gLeftDrive, *gRightDrive, control::kDrivetrainVelocityConfig);
 
 	gPrimaryImu.emplace(hal::config::kPrimaryImu.port);
 	gSecondaryImu.emplace(hal::config::kSecondaryImu.port);
+	gCalibratedIndicator->set_value(false);
+	gCalibrationIndicator->set_value(true);
 	gPrimaryImu->calibrate(true);
 	gSecondaryImu->calibrate(true);
+	if (gPrimaryImu->isReady() && gSecondaryImu->isReady()) {
+		gCalibrationIndicator->set_value(false);
+		gCalibratedIndicator->set_value(true);
+	}
 	gForwardPodRotation.emplace(hal::config::kForwardPodRotation.port);
 	gSidewaysPodRotation.emplace(hal::config::kSidewaysPodRotation.port);
 
@@ -227,6 +253,15 @@ void opcontrol() {
 	std::uint32_t previousStatusTime = pros::millis();
 
 	while (true) {
+		if (master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_Y)) {
+			gClawPneumaticExtended = !gClawPneumaticExtended;
+			gClawPneumatic->set_value(gClawPneumaticExtended);
+		}
+		if (master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_RIGHT)) {
+			gHingePneumaticExtended = !gHingePneumaticExtended;
+			gHingePneumatic->set_value(gHingePneumaticExtended);
+		}
+
 		// -- Input profiling --
 		const driver::JoystickInput rawInput{
 		    .leftY = -normalizeStick(master.get_analog(ANALOG_LEFT_Y)),
@@ -262,10 +297,41 @@ void opcontrol() {
 			gDrivetrain->setTargetVelocity(leftSlewedRpm, rightSlewedRpm);
 		}
 
-		if (master.get_digital(DIGITAL_L1)) {
+		const bool winchWindRequested = master.get_digital(DIGITAL_L1);
+		const bool winchLetOutRequested = !winchWindRequested && master.get_digital(DIGITAL_L2);
+
+		if (!winchWindRequested) {
+			gWinchStoppedForNoLoad = false;
+			gWinchLowCurrentSince.reset();
+		} else if (!gWinchStoppedForNoLoad) {
+			const auto leftCurrent = gWinchLeft->getCurrentDrawMilliAmps();
+			const auto rightCurrent = gWinchRight->getCurrentDrawMilliAmps();
+			if (!leftCurrent || !rightCurrent) {
+				gWinchStoppedForNoLoad = true;
+				gWinchLowCurrentSince.reset();
+				std::printf("[opcontrol] winch stopped: unable to read motor current\n");
+			} else if (*leftCurrent <= kWinchNoLoadCurrentMilliAmps ||
+			           *rightCurrent <= kWinchNoLoadCurrentMilliAmps) {
+				const std::uint32_t now = pros::millis();
+				if (!gWinchLowCurrentSince) {
+					gWinchLowCurrentSince = now;
+				} else if (now - *gWinchLowCurrentSince >= kWinchNoLoadConfirmMs) {
+					gWinchStoppedForNoLoad = true;
+					std::printf("[opcontrol] winch stopped: no-load current detected\n");
+				}
+			} else {
+				gWinchLowCurrentSince.reset();
+			}
+		}
+
+		if (winchWindRequested && !gWinchStoppedForNoLoad) {
 			gWinchLeft->writeVoltage(-kWinchVoltage);
 			gWinchRight->writeVoltage(kWinchVoltage);
-		} else if (master.get_digital(DIGITAL_L2)) {
+		} else if (winchLetOutRequested &&
+		           gWinchLeft->getPositionRaw() <
+		               gWinchLeftStartingPosition - kWinchPositionToleranceDegrees &&
+		           gWinchRight->getPositionRaw() >
+		               gWinchRightStartingPosition + kWinchPositionToleranceDegrees) {
 			gWinchLeft->writeVoltage(kWinchVoltage);
 			gWinchRight->writeVoltage(-kWinchVoltage);
 		} else {

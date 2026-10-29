@@ -48,6 +48,15 @@ inline constexpr std::int8_t kWinchRight = 13;
 
 }  // namespace port
 
+namespace adi_port {
+
+inline constexpr std::uint8_t kCalibratedIndicator = 'A';
+inline constexpr std::uint8_t kCalibrationIndicator = 'B';
+inline constexpr std::uint8_t kClawPneumatic = 'C';
+inline constexpr std::uint8_t kHingePneumatic = 'D';
+
+}  // namespace adi_port
+
 struct MotorGroupConfig {
     const char* name;
     std::vector<std::int8_t> ports;
