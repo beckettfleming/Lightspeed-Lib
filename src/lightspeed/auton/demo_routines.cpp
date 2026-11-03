@@ -5,15 +5,6 @@
 #include "lightspeed/auton/sequencer.hpp"
 #include "lightspeed/motion/path.hpp"
 #include "lightspeed/odom/types.hpp"
-#include "config.hpp"
-#include "motor_group.hpp"
-#include "pros/adi.hpp"
-namespace{
-    std::optional<pros::adi::DigitalOut> gClawPneumatic;
-    std::optional<pros::adi::DigitalOut> gHingePneumatic;
-    gClawPneumatic.emplace(hal::config::adi_port::kClawPneumatic);
-	gHingePneumatic.emplace(hal::config::adi_port::kHingePneumatic);
-}
 
 namespace lightspeed::auton::demo {
 
