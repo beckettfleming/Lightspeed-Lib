@@ -169,6 +169,7 @@ void initialize() {
 
 	gRoutineRegistry.registerRoutine(auton::demo::makeDemoStraightAndTurnRoutine());
 	gRoutineRegistry.registerRoutine(auton::demo::makeDemoPursuitPathRoutine());
+	gRoutineRegistry.registerRoutine(auton::demo::makeScoreOneClose());
 
 	gSelectorGui.emplace(*gOdometry, gRoutineRegistry);
 
