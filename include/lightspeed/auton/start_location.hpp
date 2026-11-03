@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include <cstddef>
 #include <vector>
 
 #include "lightspeed/odom/types.hpp"
@@ -25,6 +26,9 @@ struct StartLocation {
 inline const std::vector<StartLocation> kStartLocations{
     StartLocation{.name = "Placeholder Start A", .pose = {.xInches = 12.0, .yInches = 12.0, .headingDegrees = 0.0}},
     StartLocation{.name = "Placeholder Start B", .pose = {.xInches = 132.0, .yInches = 12.0, .headingDegrees = 180.0}},
+    StartLocation{.name = "Close Alliance", .pose = {.xInches = 0.0, .yInches = 11.375, .headingDegrees = 180.0}},
 };
+
+inline constexpr std::size_t kCloseAllianceStartLocationIndex = 2;
 
 }  // namespace lightspeed::auton

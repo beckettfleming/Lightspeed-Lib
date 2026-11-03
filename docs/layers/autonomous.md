@@ -129,7 +129,7 @@ begins at `(0, 0, 0)` and every field-coordinate routine drives to the wrong pla
 
 ## `SelectorGui`
 
-A two-screen touch GUI on the 480×272 brain screen, running its own background task.
+A two-screen touch GUI on the 480×240 brain screen, running its own background task.
 
 ### Screen 1 — start location picker
 
@@ -350,7 +350,7 @@ inline constexpr FieldDimensions kFieldDimensions{
 inline constexpr FieldToScreenConfig kFieldToScreenConfig{
     .originXInches = 0.0,
     .originYInches = 0.0,
-    .pixelsPerInch = 1.6,      // 230px region / 144in field
+    .pixelsPerInch = 200.0 / 144.0,  // 200px region / 144in field
 };
 ```
 

@@ -16,12 +16,11 @@ namespace lightspeed::auton {
 
 inline constexpr FieldDimensions kFieldDimensions{.widthInches = 144.0, .lengthInches = 144.0};
 
-// pixelsPerInch chosen so a 144in field fits kScreen1FieldRegion
-// (230x230px) with margin: 230 / 144 ~= 1.6.
+// pixelsPerInch chosen so a 144in field fits the 200x200px screen-1 region.
 inline constexpr FieldToScreenConfig kFieldToScreenConfig{
     .originXInches = 0.0,
     .originYInches = 0.0,
-    .pixelsPerInch = 1.6,
+    .pixelsPerInch = 200.0 / 144.0,
 };
 
 }  // namespace lightspeed::auton

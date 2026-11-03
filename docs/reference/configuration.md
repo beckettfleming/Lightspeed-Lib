@@ -64,7 +64,7 @@ gives you odometry that disagrees with motion — the robot thinks it drove 20 i
 Both must be the **drive wheel** diameter. (If you add tracking pods, their diameter is a
 *separate* number that goes into each `PodConfig::ticksToInches` — don't conflate them.)
 
-### 3. Screen resolution (480 × 272)
+### 3. Screen resolution (480 × 240)
 
 Declared twice on purpose — `auton::kScreenWidth/kScreenHeight` and
 `telemetry::kDashboardScreenWidth/Height`. This duplication is deliberate (each module owns its

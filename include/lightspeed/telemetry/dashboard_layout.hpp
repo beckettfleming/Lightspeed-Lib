@@ -14,7 +14,7 @@ namespace lightspeed::telemetry {
 // Duplicated from auton::kScreenWidth/kScreenHeight rather than shared --
 // each module owns its own hardware constants.
 inline constexpr std::int16_t kDashboardScreenWidth = 480;
-inline constexpr std::int16_t kDashboardScreenHeight = 272;
+inline constexpr std::int16_t kDashboardScreenHeight = 240;
 
 // pros::screen::print's "line" overload addresses text by line index
 // (0, 1, 2, ...), not raw pixels -- these are line indices, not offsets.

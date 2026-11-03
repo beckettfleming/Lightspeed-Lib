@@ -150,7 +150,7 @@ If you subtract two wrapped headings across the 0/360 boundary you get a ~359° 
 
 ## Screen coordinates
 
-The selector GUI maps field inches to screen pixels on the 480 × 272 brain screen.
+The selector GUI maps field inches to screen pixels on the 480 × 240 brain screen.
 
 ```cpp
 ScreenPoint fieldToScreen(double fieldXInches, double fieldYInches,
@@ -162,7 +162,7 @@ ScreenPoint fieldToScreen(double fieldXInches, double fieldYInches,
 - **Field +y maps to screen −y** (upward) — screen y grows downward
 
 ```
-   Field                      Screen (480 x 272)
+   Field                      Screen (480 x 240)
                                 (0,0) top-left
      +y                             +------------------+
       ^                             |                  |
@@ -173,8 +173,8 @@ ScreenPoint fieldToScreen(double fieldXInches, double fieldYInches,
                                               y grows down
 ```
 
-Current mapping: `pixelsPerInch = 1.6`, chosen so a 144 in field fits the 230 × 230 px screen-1
-region with margin. Screen 2's preview pane uses the same origin at `1.6 × 0.65`.
+Current mapping: `pixelsPerInch = 200 / 144`, chosen so a 144 in field fits the 200 × 200 px screen-1
+region. Screen 2's preview pane uses the same origin at `(200 / 144) × 0.65`.
 
 ---
 

@@ -127,13 +127,20 @@ struct StartLocation {
     odom::Pose  pose;   // where the robot starts on the field
 };
 
-inline const std::vector<StartLocation> kStartLocations{ /* two placeholders */ };
+inline const std::vector<StartLocation> kStartLocations{
+    StartLocation{.name = "Placeholder Start A",
+                  .pose = {.xInches = 12.0, .yInches = 12.0, .headingDegrees = 0.0}},
+    StartLocation{.name = "Placeholder Start B",
+                  .pose = {.xInches = 132.0, .yInches = 12.0, .headingDegrees = 180.0}},
+    StartLocation{.name = "Close Alliance",
+                  .pose = {.xInches = 0.0, .yInches = 11.375, .headingDegrees = 180.0}},
+};
 ```
 
 Tapping a start location on screen tells odometry the robot is at that pose.
 That's how the robot knows where it is when autonomous begins.
 
-> ⚠️ The two entries are "Placeholder Start A" (12, 12, facing 0°) and
+> ⚠️ The first two entries are "Placeholder Start A" (12, 12, facing 0°) and
 > "Placeholder Start B" (132, 12, facing 180°). Replace them with the season's real
 > starting spots. See [placeholders § 5](../placeholders.md#5-this-seasons-game).
 
@@ -225,11 +232,11 @@ void renderRoute(const FieldToScreenConfig&, const ScreenRegion&,
 ### Screen layout — `screen_layout.hpp`
 
 All pixel positions are here, so the selector code has no raw pixel numbers. The
-brain screen is 480 × 272 pixels.
+brain screen is 480 × 240 pixels.
 
 | Constant | Value | What |
 | --- | --- | --- |
-| `kScreen1FieldRegion` | (125, 24)–(355, 254) | Screen 1's field, 230 × 230 px |
+| `kScreen1FieldRegion` | (140, 20)–(340, 220) | Screen 1's field, 200 × 200 px |
 | `kStartZoneRadiusPixels` | 10 | Size of each tappable start dot |
 | `kPreviewRegion` | (10, 30)–(160, 180) | Screen 2's preview |
 | `kPreviewScaleFactor` | 0.65 | Preview size compared to screen 1 |
@@ -237,8 +244,8 @@ brain screen is 480 × 272 pixels.
 | `kRoutineRowHeight` | 32 | Height of each row |
 | `kMaxVisibleRoutineRows` | 5 | Scroll buttons appear after this |
 | `kScrollUpZone` / `kScrollDownZone` | x 430–470 | Scroll buttons |
-| `kBackZone` | (10, 236)–(110, 266) | Back button |
-| `kConfirmZone` | (370, 236)–(470, 266) | Confirm button |
+| `kBackZone` | (10, 200)–(110, 230) | Back button |
+| `kConfirmZone` | (370, 200)–(470, 230) | Confirm button |
 
 ---
 
@@ -250,7 +257,7 @@ inline constexpr FieldDimensions kFieldDimensions{ .widthInches = 144.0, .length
 inline constexpr FieldToScreenConfig kFieldToScreenConfig{
     .originXInches = 0.0,
     .originYInches = 0.0,
-    .pixelsPerInch = 1.6,   // fits 144 in into 230 px
+    .pixelsPerInch = 200.0 / 144.0,   // fits 144 in into 200 px
 };
 ```
 
@@ -264,13 +271,21 @@ inline constexpr FieldToScreenConfig kFieldToScreenConfig{
 > ⚠️ `demo::makeDemoStraightAndTurnRoutine()` and `demo::makeDemoPursuitPathRoutine()`
 > are **not real strategy**. They exist to test the menu and helpers. Replace them.
 
-* **Demo: Straight + Turn** — starts raising the arm, drives 24 in forward, waits
-  up to 2 s for the arm, then turns to face 90°.
+* **Demo: Straight + Turn** — drives 24 in forward, then turns to face 90°.
 * **Demo: Pursuit Path** — follows a short 3-point path starting from wherever
   the robot is.
 
 Both are allowed from any start location. Their previews are drawn from Start A,
 even if Start B is chosen.
+
+## `closeAlliance`
+
+This routine is available only after selecting the Close Alliance start pose
+`(0, 11.375, 180°)`. It moves forward 2 in, backward 1.5 in, then forward 2 in,
+turns to face away from `(18, 18)`, and drives backward to that point. As the
+reverse drive starts, it extends the hinge and commands the winch-driven lift up
+2 in. Lift height is calculated from the paired winch encoders using a 0.5 in
+drum radius; the mirrored winch targets are about 229° in opposite directions.
 
 ---
 

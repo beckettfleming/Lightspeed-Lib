@@ -10,9 +10,9 @@
 
 namespace lightspeed::auton {
 
-// Standard V5 Brain touch screen resolution.
+// V5 Brain touch screen resolution.
 inline constexpr std::int16_t kScreenWidth = 480;
-inline constexpr std::int16_t kScreenHeight = 272;
+inline constexpr std::int16_t kScreenHeight = 240;
 
 struct ScreenPoint {
     std::int16_t x;

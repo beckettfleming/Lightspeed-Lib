@@ -65,6 +65,10 @@ void MotorGroup::writeVoltage(std::int32_t millivolts) const {
     group_.move_voltage(clamped);
 }
 
+std::int32_t MotorGroup::moveAbsolute(double position, std::int32_t velocityRpm) const {
+    return group_.move_absolute(position, velocityRpm);
+}
+
 void MotorGroup::setBrakeMode(pros::motor_brake_mode_e_t mode) const {
     group_.set_brake_mode_all(mode);
 }

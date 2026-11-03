@@ -1,5 +1,6 @@
 #include "main.h"
 
+#include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <optional>
@@ -10,6 +11,7 @@
 #include "lightspeed/auton/demo_routines.hpp"
 #include "lightspeed/auton/routine.hpp"
 #include "lightspeed/auton/selector_gui.hpp"
+#include "lightspeed/auton/start_location.hpp"
 #include "lightspeed/control/drivetrain_velocity_constants.hpp"
 #include "lightspeed/control/drivetrain_velocity_controller.hpp"
 #include "lightspeed/control/slew_rate_limiter.hpp"
@@ -26,6 +28,7 @@
 #include "lightspeed/motion/drive_to_point.hpp"
 #include "lightspeed/motion/motion_constants.hpp"
 #include "lightspeed/motion/move_to_pose.hpp"
+#include "lightspeed/motion/pose_math.hpp"
 #include "lightspeed/motion/pure_pursuit_controller.hpp"
 #include "lightspeed/motion/turn_to_heading.hpp"
 #include "lightspeed/odom/ime_source.hpp"
@@ -34,12 +37,14 @@
 #include "lightspeed/odom/odometry_fusion.hpp"
 #include "lightspeed/odom/tracking_wheel_source.hpp"
 #include "lightspeed/odom/types.hpp"
+#include "lightspeed/subsystem/lift.hpp"
 #include "lightspeed/telemetry/dashboard.hpp"
 #include "lightspeed/telemetry/sd_logger.hpp"
 #include "lightspeed/telemetry/serial_link.hpp"
 #include "lightspeed/telemetry/telemetry_bus.hpp"
 #include "pros/adi.hpp"
 #include "pros/misc.hpp"
+#include "pros/rtos.hpp"
 
 namespace {
 
@@ -53,6 +58,7 @@ std::optional<lightspeed::hal::MotorGroup> gLeftDrive;
 std::optional<lightspeed::hal::MotorGroup> gRightDrive;
 std::optional<lightspeed::hal::MotorGroup> gWinchLeft;
 std::optional<lightspeed::hal::MotorGroup> gWinchRight;
+std::optional<lightspeed::subsystem::Lift> gLift;
 std::optional<lightspeed::hal::MotorGroup> gIntake;
 std::optional<pros::adi::DigitalOut> gClawPneumatic;
 std::optional<pros::adi::DigitalOut> gHingePneumatic;
@@ -106,9 +112,78 @@ constexpr double kWinchNoLoadCurrentMilliAmps = 500.0;
 constexpr double kWinchPositionToleranceDegrees = 1.0;
 constexpr std::int32_t kWinchVoltage = 12000;
 constexpr std::int32_t kIntakeVoltage = 12000;
+constexpr double kWinchDrumRadiusInches = 0.5;
+constexpr std::uint32_t kLiftSettleTimeoutMs = 5000;
+constexpr double kMotionTestSegmentInches = 6.0;
 
 double normalizeStick(std::int32_t rawAnalog) {
 	return static_cast<double>(rawAnalog) / 127.0;
+}
+
+void runSelectorMotionTest(lightspeed::auton::AutonomousContext& ctx) {
+	constexpr double kPi = 3.14159265358979323846;
+	const lightspeed::odom::Pose start = ctx.odometry.getPose();
+	const double headingRadians = start.headingDegrees * kPi / 180.0;
+	const double forwardX = std::sin(headingRadians) * kMotionTestSegmentInches;
+	const double forwardY = std::cos(headingRadians) * kMotionTestSegmentInches;
+	const double rightX = std::cos(headingRadians) * kMotionTestSegmentInches;
+	const double rightY = -std::sin(headingRadians) * kMotionTestSegmentInches;
+
+	const double forwardTargetX = start.xInches + forwardX;
+	const double forwardTargetY = start.yInches + forwardY;
+	const double sideTargetX = forwardTargetX + rightX;
+	const double sideTargetY = forwardTargetY + rightY;
+	const double finalTargetX = sideTargetX + rightX;
+	const double finalTargetY = sideTargetY + rightY;
+	const double sideHeading = start.headingDegrees + 90.0;
+
+	ctx.driveStraightDistance.run(kMotionTestSegmentInches);
+	ctx.turnToHeading.run(sideHeading);
+	ctx.driveToPoint.driveToPoint(sideTargetX, sideTargetY);
+	ctx.moveToPose.run(finalTargetX, finalTargetY, sideHeading);
+
+	const std::vector<lightspeed::motion::Waypoint> returnPath{
+	    {finalTargetX, finalTargetY},
+	    {sideTargetX, sideTargetY},
+	    {forwardTargetX, forwardTargetY},
+	    {start.xInches, start.yInches},
+	};
+	ctx.purePursuit.follow(returnPath);
+}
+
+void runCloseAlliance(lightspeed::auton::AutonomousContext& ctx) {
+	ctx.turnToHeading.run(180.0);
+	ctx.driveStraightDistance.run(2.0);
+	ctx.driveStraightDistance.run(-1.5);
+	ctx.driveStraightDistance.run(2.0);
+
+	const lightspeed::odom::Pose pose = ctx.odometry.getPose();
+	const double targetX = 18.0;
+	const double targetY = 18.0;
+	const double distanceToTarget = lightspeed::motion::distanceToPoint(pose, targetX, targetY);
+	double reverseHeading = lightspeed::motion::headingToPoint(pose, targetX, targetY) + 180.0;
+	if (reverseHeading >= 360.0) {
+		reverseHeading -= 360.0;
+	}
+
+	ctx.turnToHeading.run(reverseHeading);
+	gHingePneumaticExtended = true;
+	gHingePneumatic->set_value(gHingePneumaticExtended);
+	const bool liftMoveStarted = gLift->moveByInches(2.0);
+	ctx.driveStraightDistance.run(-distanceToTarget);
+
+	if (liftMoveStarted) {
+		const std::uint32_t liftWaitStarted = pros::millis();
+		while (!gLift->isAtTarget()) {
+			if (pros::millis() - liftWaitStarted >= kLiftSettleTimeoutMs) {
+				std::printf("[autonomous] WARNING: lift did not reach 2in target (measured %.2fin)\n",
+				            gLift->getHeightInches());
+				gLift->stop();
+				break;
+			}
+			pros::delay(10);
+		}
+	}
 }
 
 }  // namespace
@@ -132,6 +207,7 @@ void initialize() {
 	gWinchRight->setBrakeMode(pros::E_MOTOR_BRAKE_HOLD);
 	gWinchLeftStartingPosition = gWinchLeft->getPositionRaw();
 	gWinchRightStartingPosition = gWinchRight->getPositionRaw();
+	gLift.emplace(*gWinchLeft, *gWinchRight, kWinchDrumRadiusInches);
 	gDrivetrain.emplace(*gLeftDrive, *gRightDrive, control::kDrivetrainVelocityConfig);
 
 	gPrimaryImu.emplace(hal::config::kPrimaryImu.port);
@@ -169,6 +245,19 @@ void initialize() {
 
 	gRoutineRegistry.registerRoutine(auton::demo::makeDemoStraightAndTurnRoutine());
 	gRoutineRegistry.registerRoutine(auton::demo::makeDemoPursuitPathRoutine());
+	gRoutineRegistry.registerRoutine(auton::Routine{
+	    .name = "Test: Selector + Motion",
+	    .validStartLocationIndices = {},
+	    .previewPoints = {{12.0, 12.0}, {12.0, 18.0}, {18.0, 18.0}, {24.0, 18.0},
+	                      {18.0, 18.0}, {12.0, 18.0}, {12.0, 12.0}},
+	    .run = runSelectorMotionTest,
+	});
+	gRoutineRegistry.registerRoutine(auton::Routine{
+	    .name = "closeAlliance",
+	    .validStartLocationIndices = {auton::kCloseAllianceStartLocationIndex},
+	    .previewPoints = {{0.0, 11.375}, {0.0, 9.375}, {0.0, 10.875}, {0.0, 8.875}, {18.0, 18.0}},
+	    .run = runCloseAlliance,
+	});
 
 	gSelectorGui.emplace(*gOdometry, gRoutineRegistry);
 

@@ -45,6 +45,9 @@ public:
     // Clamped to the V5 motor's supported range (+-12000 mV).
     void writeVoltage(std::int32_t millivolts) const;
 
+    // Non-blocking absolute target in the group's configured encoder units.
+    [[nodiscard]] std::int32_t moveAbsolute(double position, std::int32_t velocityRpm) const;
+
     void setBrakeMode(pros::motor_brake_mode_e_t mode) const;
 
     // Deliberately coarse: `disconnected` is reported the instant even ONE

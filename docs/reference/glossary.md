@@ -191,7 +191,7 @@ before it's true". See [Setup Checklist]({{ site.baseurl }}/guides/setup-checkli
 
 ## VEX specifics
 
-**V5 Brain** — The robot's main controller. 480 × 272 touchscreen, 21 smart ports.
+**V5 Brain** — The robot's main controller. 480 × 240 touchscreen, 21 smart ports.
 
 **Smart port** — A numbered port (1–21) for V5 devices. A **negative** port number in
 configuration reverses that device.
