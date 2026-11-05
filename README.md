@@ -1,102 +1,99 @@
 # Lightspeed
 
-<<<<<<< Updated upstream
-📖 **Full documentation: <https://beckettfleming.github.io/Lightspeed-Lib/>**
+Robot code for VEX V5RC team **97934U Tachyon**, written in C++ on
+[PROS](https://pros.cs.purdue.edu/) 4.2.2. All of it, from the PID loops to the auton
+selector, is written in this repo.
 
-New to the codebase? Start with
-[Getting Started](https://beckettfleming.github.io/Lightspeed-Lib/getting-started/).
-Setting up real hardware? Start with the
-[Setup Checklist](https://beckettfleming.github.io/Lightspeed-Lib/guides/setup-checklist/).
+📖 **Docs:** <https://beckettfleming.github.io/Lightspeed-Lib/>
+New here? Read the [Jameson Guide](docs/guides/jameson-guide.md) first.
 
 ---
 
-A from-scratch VEX V5RC code library for team 97934U, built on PROS (C++). Layers: `lightspeed::hal` (Step 1),
-`lightspeed::control` (Step 2), `lightspeed::odom` (Step 3),
-`lightspeed::subsystem` (Step 4), `lightspeed::driver` (Step 5),
-`lightspeed::motion` (Step 6), `lightspeed::auton` (Step 7),
-`lightspeed::telemetry` (Step 8), `lightspeed::vision` (Step 9).
-=======
-Lightspeed is a VEX V5 robot code library written from scratch by team
-**97934U**. It's built on [PROS](https://pros.cs.purdue.edu/) (C++).
->>>>>>> Stashed changes
+## What the program does
 
-It takes care of the parts of robot code that every team needs and that are hard
-to get right:
+Everything starts in [`src/main.cpp`](src/main.cpp), which holds the three PROS entry points.
 
-* **Driving** — smooth, speed-controlled driving with joystick curves and
-  acceleration limits.
-* **Knowing where the robot is** — combines wheel encoders, inertial sensors, and
-  tracking wheels into one field position.
-* **Mechanisms** — a template for arms, lifts, and intakes with preset positions
-  and automatic safety stops.
-* **Autonomous** — drive a distance, turn to an angle, drive to a point, or follow
-  a path, plus a touchscreen menu to pick the routine.
-* **Logging** — records what the robot did to the SD card so you can look at it
-  afterwards.
-* **AprilTag vision** — an experimental position correction using the AI Vision
-  sensor.
+### `initialize()`: when the program starts
 
-You set it up for your robot by changing **settings files**, not by rewriting the
-library.
+1. Creates every motor group, sensor, and pneumatic **once**. Driver control and auton share the
+   same objects.
+2. Calibrates the inertial sensors. **Don't move the robot during this.** The ADI indicator on
+   port B is lit while it calibrates, and the one on port A lights when it's done.
+3. Starts odometry, which tracks the robot's field position from the drive encoders, tracking
+   wheels, and IMUs.
+4. Registers the autonomous routines.
+5. If **Y is held** at startup, enters diagnostic mode and stops there.
+6. Otherwise, shows the auton selector on the brain screen and starts the SD-card logger and the
+   driver dashboard.
 
-## Get started
+### `autonomous()`
 
-| I want to… | Go to |
-| --- | --- |
-| Just get it working, no explanations | [**Easy mode**](docs/quick-start.md#easy-mode) |
-| Get it working and understand the steps | [Quick start](docs/quick-start.md#quick-start-with-explanations) |
-| Set it up properly on my own robot | [Porting guide](docs/porting.md) |
-| Make it drive accurately | [Tuning guide](docs/tuning.md) |
-| Learn the vocabulary | [Key ideas](docs/concepts.md) |
-| See everything | [Documentation home](docs/README.md) |
+Runs the routine picked on the brain screen. On the selector you tap the start location, then
+the routine, then **Confirm**. If a routine was picked but never confirmed, it runs that routine
+anyway and prints a warning. Selecting a routine needs a competition switch or field control.
 
-## Status — read this first
+Routines are written from a small set of blocking motion commands:
 
-* **It has never run on a real robot.** It was carefully written and reviewed,
-  but that isn't the same as tested.
-* **Almost every number is a placeholder.** Ports, wheel sizes, and control gains
-  are sensible guesses waiting to be measured or tuned. They're all listed in the
-  [placeholder checklist](docs/placeholders.md).
-* **There are known issues.** A September 2026 review found some real problems,
-  including one that caps driver speed at about half. See the
-  [code review](docs/code-review.md). The quick start tells you how to work
-  around the most important one.
+| Command | Does |
+|---|---|
+| `driveStraightDistance.run(in)` | Drive a distance forward/back, holding heading |
+| `turnToHeading.run(deg)` | Turn in place to an absolute field heading |
+| `driveToPoint.driveToPoint(x, y)` | Turn to face a point, then drive to it |
+| `moveToPose.run(x, y, deg)` | Curve to a point and arrive at a heading |
+| `purePursuit.follow({...})` | Follow a smoothed path through waypoints |
+
+### `opcontrol()`: driver control
+
+A 10 ms loop. Joystick input passes through a deadband and curve, then a drive mode (arcade by
+default), then an acceleration limit. The result goes to the same drivetrain velocity
+controller that auton uses.
+
+| Control | Does |
+|---|---|
+| Sticks | Drive |
+| **L1** (hold) | Wind winch. Stops on its own when current drops, meaning the winch is unloaded |
+| **L2** (hold) | Let winch out. Stops at its starting position |
+| **B** / **DOWN** (hold) | Intake in / out |
+| **Y** | Toggle claw pneumatic |
+| **RIGHT** | Toggle hinge pneumatic |
+
+---
 
 ## Build
 
 ```bash
 pros build      # compile
-pros upload     # compile and send to the brain
-pros terminal   # watch messages from the brain (keep this open while testing)
+pros mu         # compile, upload, and open the terminal
 ```
 
-Uses PROS kernel 4.2.2 and LVGL 9.2.0.
+Keep `pros terminal` open while testing. The robot prints its state and auton progress there.
 
-## How it's organized
+---
 
-The library is split into ten parts. Each one is a folder under
-`include/lightspeed/` and `src/lightspeed/`.
+## Where things are
 
-| Part | What it does |
-| --- | --- |
-| [`hal`](docs/layers/hal.md) | Port numbers and simple wrappers around motors and sensors |
-| [`control`](docs/layers/control.md) | Speed control for the drivetrain (PID, ramping) |
-| [`odom`](docs/layers/odom.md) | Tracks the robot's position on the field |
-| [`subsystem`](docs/layers/subsystem.md) | Template for mechanisms like arms and intakes |
-| [`driver`](docs/layers/driver.md) | Turns joystick input into drive commands |
-| [`motion`](docs/layers/motion.md) | Autonomous movements: drive, turn, go to point, follow path |
-| [`auton`](docs/layers/auton.md) | Autonomous routines and the touchscreen picker |
-| [`telemetry`](docs/layers/telemetry.md) | Logging, brain-screen dashboard, live data over USB |
-| [`vision`](docs/layers/vision.md) | AprilTag position correction (experimental, off by default) |
-| [`diagnostics`](docs/layers/diagnostics.md) | A test mode you enter by holding Y at startup |
+| You want to change… | File |
+|---|---|
+| Port numbers (the only place they appear) | [`include/lightspeed/hal/config.hpp`](include/lightspeed/hal/config.hpp) |
+| Buttons, mechanisms, auton routines | [`src/main.cpp`](src/main.cpp) |
+| Gains, speeds, wheel sizes | `include/lightspeed/*/*_constants.hpp` |
+| Auton start locations | [`include/lightspeed/auton/start_location.hpp`](include/lightspeed/auton/start_location.hpp) |
 
-## Ground rules the code follows
+The library is split into layers under `include/lightspeed/` and `src/lightspeed/`. Each one
+only uses the layers below it:
 
-* **One path to the drive motors.** Driver control and autonomous both send
-  speeds through the same drivetrain controller.
-* **One of everything.** Each motor group, controller, and sensor object is
-  created once in `src/main.cpp` and shared.
-* **One file for ports.** Only `include/lightspeed/hal/config.hpp` has port
-  numbers.
-* **No magic numbers in the logic.** Every setting is in a `*_constants.hpp`
-  file.
+| Layer | Job |
+|---|---|
+| `hal` | Port map and thin motor/sensor wrappers |
+| `control` | PIDF, slew limiting, drivetrain velocity control |
+| `odom` | Fuses encoders, tracking wheels, and IMUs into a field pose |
+| `subsystem` | Framework for mechanisms with states and safety stops |
+| `driver` | Joystick curves, drive modes, accel limits, button macros |
+| `motion` | The auton motion commands above |
+| `auton` | Routine registry and touchscreen selector |
+| `telemetry` | SD logging, brain dashboard, USB serial data |
+| `vision` | AprilTag pose correction (experimental) |
+| `diagnostics` | Hold-Y test mode |
+
+Many gains and measurements are still placeholders. See the
+[Setup Checklist](docs/guides/setup-checklist.md) and [Tuning Guide](docs/guides/tuning.md).

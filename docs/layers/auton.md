@@ -281,11 +281,8 @@ even if Start B is chosen.
 ## `closeAlliance`
 
 This routine is available only after selecting the Close Alliance start pose
-`(0, 11.375, 180°)`. It moves forward 2 in, backward 1.5 in, then forward 2 in,
-turns to face away from `(18, 18)`, and drives backward to that point. As the
-reverse drive starts, it extends the hinge and commands the winch-driven lift up
-2 in. Lift height is calculated from the paired winch encoders using a 0.5 in
-drum radius; the mirrored winch targets are about 229° in opposite directions.
+`(0, 11.375, 180°)`. It drives forward 2 in, backward 1.5 in, then forward 2 in,
+with drivetrain motor output capped at 8 V for now.
 
 ---
 

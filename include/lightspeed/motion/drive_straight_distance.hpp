@@ -39,8 +39,9 @@ public:
                            const DriveStraightDistanceConfig& config);
 
     // Blocking. Negative distance = backward. Holds the heading captured at
-    // the start of the call. Stops (0,0 target) on return.
-    void run(double distanceInches);
+    // the start of the call unless holdHeading is false. Stops (0,0 target)
+    // on return.
+    void run(double distanceInches, bool holdHeading = true);
 
 private:
     control::DrivetrainVelocityController& drivetrain_;

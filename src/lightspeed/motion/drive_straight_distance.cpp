@@ -11,7 +11,7 @@ DriveStraightDistance::DriveStraightDistance(control::DrivetrainVelocityControll
                                               const DriveStraightDistanceConfig& config)
     : drivetrain_(drivetrain), odometry_(odometry), config_(config), distancePidf_(config.distancePidf) {}
 
-void DriveStraightDistance::run(double distanceInches) {
+void DriveStraightDistance::run(double distanceInches, bool holdHeading) {
     distancePidf_.reset();
 
     const odom::Pose startPose = odometry_.getPose();
@@ -39,7 +39,7 @@ void DriveStraightDistance::run(double distanceInches) {
             dtSeconds);
 
         const double headingError = headingErrorDegrees(currentPose.headingDegrees, startPose.headingDegrees);
-        const double headingCorrection = config_.headingCorrectionKP * headingError;
+        const double headingCorrection = holdHeading ? config_.headingCorrectionKP * headingError : 0.0;
 
         const WheelSpeeds wheelSpeeds =
             angularVelocityToWheelSpeeds(targetForwardSpeed, headingCorrection, config_.kinematics.trackWidthInches);

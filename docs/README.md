@@ -48,10 +48,3 @@ explains what you need.
 Most numbers in this codebase are **placeholders**, not tested values. Pages
 mark them with ⚠️. Don't trust a number unless the
 [placeholder checklist](placeholders.md) says it's been measured or tuned.
-
-## Older material
-
-* [`history/review-pass.md`](history/review-pass.md) — the original review
-  report that used to be the README.
-* [`history/pre-rewrite-2026-09/`](history/pre-rewrite-2026-09/) — the docs as
-  they were before this rewrite.

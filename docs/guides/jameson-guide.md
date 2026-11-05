@@ -14,7 +14,7 @@ You only ever touch **two files**:
 
 | File | What goes in it |
 |---|---|
-| `include/hal/config.hpp` | Port numbers. **The only place a port number is allowed.** |
+| `include/lightspeed/hal/config.hpp` | Port numbers. **The only place a port number is allowed.** |
 | `src/main.cpp` | Creating devices, driver control (`opcontrol`), and autonomous routines. |
 
 The drivetrain, odometry, and motion code are already wired up. You don't need to touch them to

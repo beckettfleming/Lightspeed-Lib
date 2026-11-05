@@ -59,6 +59,9 @@ public:
     // non-blocking; the control task applies it on its next cycle.
     void coast();
 
+    // Caps the controller's voltage output without changing its velocity target.
+    void setMaxOutputVoltageMillivolts(std::int32_t millivolts);
+
 private:
     void controlLoop();
     // isLeftSide selects which of two fixed telemetry channel-name pairs
@@ -78,6 +81,7 @@ private:
     std::atomic<double> leftTargetRpm_{0.0};
     std::atomic<double> rightTargetRpm_{0.0};
     std::atomic<bool> coastRequested_{false};
+    std::atomic<std::int32_t> maxOutputVoltageMillivolts_{12000};
 
     // Must be declared last: its initializer starts the control task, which
     // reads every other member above and must see them fully constructed.

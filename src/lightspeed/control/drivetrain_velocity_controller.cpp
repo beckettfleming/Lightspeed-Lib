@@ -32,6 +32,10 @@ void DrivetrainVelocityController::coast() {
     coastRequested_.store(true);
 }
 
+void DrivetrainVelocityController::setMaxOutputVoltageMillivolts(std::int32_t millivolts) {
+    maxOutputVoltageMillivolts_.store(std::clamp(millivolts, std::int32_t{0}, std::int32_t{12000}));
+}
+
 void DrivetrainVelocityController::controlLoop() {
     std::uint32_t previousTime = pros::millis();
     const double dtSeconds = static_cast<double>(config_.loopPeriodMs) / 1000.0;
@@ -116,7 +120,8 @@ void DrivetrainVelocityController::updateSide(hal::MotorGroup& motors, PIDFContr
         (batteryReadValid && !batteryLow) ? (config_.nominalBatteryMillivolts / batteryMv) : 1.0;
     const double compensatedMv = slewedOutputMv * compensationRatio;
 
-    const double clampedMv = std::clamp(compensatedMv, -12000.0, 12000.0);
+    const double maxOutputVoltageMv = static_cast<double>(maxOutputVoltageMillivolts_.load());
+    const double clampedMv = std::clamp(compensatedMv, -maxOutputVoltageMv, maxOutputVoltageMv);
     if (coastRequested_.load()) {
         motors.writeVoltage(0);
     } else {

@@ -28,7 +28,6 @@
 #include "lightspeed/motion/drive_to_point.hpp"
 #include "lightspeed/motion/motion_constants.hpp"
 #include "lightspeed/motion/move_to_pose.hpp"
-#include "lightspeed/motion/pose_math.hpp"
 #include "lightspeed/motion/pure_pursuit_controller.hpp"
 #include "lightspeed/motion/turn_to_heading.hpp"
 #include "lightspeed/odom/ime_source.hpp"
@@ -37,7 +36,6 @@
 #include "lightspeed/odom/odometry_fusion.hpp"
 #include "lightspeed/odom/tracking_wheel_source.hpp"
 #include "lightspeed/odom/types.hpp"
-#include "lightspeed/subsystem/lift.hpp"
 #include "lightspeed/telemetry/dashboard.hpp"
 #include "lightspeed/telemetry/sd_logger.hpp"
 #include "lightspeed/telemetry/serial_link.hpp"
@@ -58,7 +56,6 @@ std::optional<lightspeed::hal::MotorGroup> gLeftDrive;
 std::optional<lightspeed::hal::MotorGroup> gRightDrive;
 std::optional<lightspeed::hal::MotorGroup> gWinchLeft;
 std::optional<lightspeed::hal::MotorGroup> gWinchRight;
-std::optional<lightspeed::subsystem::Lift> gLift;
 std::optional<lightspeed::hal::MotorGroup> gIntake;
 std::optional<pros::adi::DigitalOut> gClawPneumatic;
 std::optional<pros::adi::DigitalOut> gHingePneumatic;
@@ -112,9 +109,8 @@ constexpr double kWinchNoLoadCurrentMilliAmps = 500.0;
 constexpr double kWinchPositionToleranceDegrees = 1.0;
 constexpr std::int32_t kWinchVoltage = 12000;
 constexpr std::int32_t kIntakeVoltage = 12000;
-constexpr double kWinchDrumRadiusInches = 0.5;
-constexpr std::uint32_t kLiftSettleTimeoutMs = 5000;
 constexpr double kMotionTestSegmentInches = 6.0;
+constexpr std::int32_t kCloseAllianceDriveVoltageLimitMillivolts = 8000;
 
 double normalizeStick(std::int32_t rawAnalog) {
 	return static_cast<double>(rawAnalog) / 127.0;
@@ -152,38 +148,11 @@ void runSelectorMotionTest(lightspeed::auton::AutonomousContext& ctx) {
 }
 
 void runCloseAlliance(lightspeed::auton::AutonomousContext& ctx) {
-	ctx.turnToHeading.run(180.0);
-	ctx.driveStraightDistance.run(2.0);
-	ctx.driveStraightDistance.run(-1.5);
-	ctx.driveStraightDistance.run(2.0);
-
-	const lightspeed::odom::Pose pose = ctx.odometry.getPose();
-	const double targetX = 18.0;
-	const double targetY = 18.0;
-	const double distanceToTarget = lightspeed::motion::distanceToPoint(pose, targetX, targetY);
-	double reverseHeading = lightspeed::motion::headingToPoint(pose, targetX, targetY) + 180.0;
-	if (reverseHeading >= 360.0) {
-		reverseHeading -= 360.0;
-	}
-
-	ctx.turnToHeading.run(reverseHeading);
-	gHingePneumaticExtended = true;
-	gHingePneumatic->set_value(gHingePneumaticExtended);
-	const bool liftMoveStarted = gLift->moveByInches(2.0);
-	ctx.driveStraightDistance.run(-distanceToTarget);
-
-	if (liftMoveStarted) {
-		const std::uint32_t liftWaitStarted = pros::millis();
-		while (!gLift->isAtTarget()) {
-			if (pros::millis() - liftWaitStarted >= kLiftSettleTimeoutMs) {
-				std::printf("[autonomous] WARNING: lift did not reach 2in target (measured %.2fin)\n",
-				            gLift->getHeightInches());
-				gLift->stop();
-				break;
-			}
-			pros::delay(10);
-		}
-	}
+	ctx.drivetrain.setMaxOutputVoltageMillivolts(kCloseAllianceDriveVoltageLimitMillivolts);
+	ctx.driveStraightDistance.run(2.0, false);
+	ctx.driveStraightDistance.run(-1.5, false);
+	ctx.driveStraightDistance.run(2.0, false);
+	ctx.drivetrain.setMaxOutputVoltageMillivolts(12000);
 }
 
 }  // namespace
@@ -207,7 +176,6 @@ void initialize() {
 	gWinchRight->setBrakeMode(pros::E_MOTOR_BRAKE_HOLD);
 	gWinchLeftStartingPosition = gWinchLeft->getPositionRaw();
 	gWinchRightStartingPosition = gWinchRight->getPositionRaw();
-	gLift.emplace(*gWinchLeft, *gWinchRight, kWinchDrumRadiusInches);
 	gDrivetrain.emplace(*gLeftDrive, *gRightDrive, control::kDrivetrainVelocityConfig);
 
 	gPrimaryImu.emplace(hal::config::kPrimaryImu.port);
