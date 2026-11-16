@@ -134,8 +134,14 @@ void OdometryFusion::fusionLoop() {
 
         continuousHeadingDegrees_ += headingDeltaDegrees;
 
+        const bool anyHealthyPod = forwardHealthyCount > 0 || strafeHealthyCount > 0;
+        const bool bothAxesHaveHealthyPods = forwardHealthyCount > 0 && strafeHealthyCount > 0;
+        const bool allConfiguredPodsHealthy =
+            forwardHealthyCount == forwardPodCount_ && strafeHealthyCount == strafePodCount_;
         const ConfidenceTier confidence =
-            worseOf(tierForAxis(forwardHealthyCount, forwardPodCount_), tierForAxis(strafeHealthyCount, strafePodCount_));
+            !anyHealthyPod ? ConfidenceTier::imeOnly
+                           : (bothAxesHaveHealthyPods && allConfiguredPodsHealthy ? ConfidenceTier::fullPod
+                                                                                  : ConfidenceTier::partial);
 
         Pose publishedPose{};
         Velocity publishedVelocity{};
@@ -278,22 +284,6 @@ std::optional<double> OdometryFusion::differentialHeadingDegrees(const PodArray&
     const double offsetDiff = pods[bestA]->getConfig().offsetInches - pods[bestB]->getConfig().offsetInches;
     const double deltaRadians = (deltas[bestA] - deltas[bestB]) / offsetDiff;
     return deltaRadians * kRadiansToDegrees;
-}
-
-ConfidenceTier OdometryFusion::tierForAxis(std::uint8_t healthyCount, std::uint8_t configuredCount) {
-    if (configuredCount == 0 || healthyCount == 0) {
-        return ConfidenceTier::imeOnly;
-    }
-    if (healthyCount == configuredCount) {
-        return ConfidenceTier::fullPod;
-    }
-    return ConfidenceTier::partial;
-}
-
-ConfidenceTier OdometryFusion::worseOf(ConfidenceTier a, ConfidenceTier b) {
-    // Declaration order fullPod < partial < imeOnly encodes rank, so a
-    // plain max() picks the lower-confidence tier.
-    return static_cast<ConfidenceTier>(std::max(static_cast<std::uint8_t>(a), static_cast<std::uint8_t>(b)));
 }
 
 Pose OdometryFusion::getPose() const {

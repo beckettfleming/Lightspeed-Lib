@@ -27,9 +27,9 @@ inline const DrivetrainKinematicsConfig kCherenkovKinematics{
 inline const TurnToHeadingConfig kTurnToHeadingConfig{
     .pidf =
         {
-            .kP = 0.6,  // deg/s of angular velocity command per degree of heading error. TODO: tune
+            .kP = 6.0,  // deg/s of angular velocity command per degree of heading error
             .kI = 0.0,
-            .kD = 0.05,
+            .kD = 0.15,
             .kV = 0.0,
             .kA = 0.0,
             .kS = 0.0,
@@ -38,7 +38,7 @@ inline const TurnToHeadingConfig kTurnToHeadingConfig{
             .settleTolerance = 2.0,  // degrees
             .settleCycles = 8,       // ~160ms at the 50Hz loop below
         },
-    .timeoutSeconds = 3.0,
+    .timeoutSeconds = 5.0,
     .loopPeriodMs = 20,  // ~50Hz
     .kinematics = kCherenkovKinematics,
 };

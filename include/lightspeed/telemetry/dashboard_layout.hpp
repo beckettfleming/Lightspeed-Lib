@@ -22,5 +22,8 @@ inline constexpr std::int16_t kDashboardTitleLine = 0;
 inline constexpr std::int16_t kDashboardBatteryLine = 1;
 inline constexpr std::int16_t kDashboardPoseLine = 2;
 inline constexpr std::int16_t kDashboardConfidenceLine = 3;
+inline constexpr std::int16_t kDashboardDriveVelocityLine = 4;
+inline constexpr std::int16_t kDashboardDriveHealthLine = 5;
+inline constexpr std::int16_t kDashboardDriveModeLine = 6;
 
 }  // namespace lightspeed::telemetry

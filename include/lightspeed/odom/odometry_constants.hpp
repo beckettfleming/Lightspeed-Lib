@@ -20,19 +20,13 @@ inline constexpr double kTrackingWheelDiameterInches = 2.0;
 inline constexpr double kTrackingWheelTicksToInches = (detail::kPi * kTrackingWheelDiameterInches) / 36000.0;
 
 inline constexpr double kRobotWheelbaseInches = 10.0;
-inline constexpr double kTrackingCenterOffsetInches = -1.5;  // behind center; sideways pod assumed at center
-
 inline const TopologyConfig kCherenkovTopology{
     .kinematics = DrivetrainKinematics::tank,
     .pods =
         {
-            {.name = "forwardPod",
+            {.name = "odometryPod",
              .role = PodRole::forward,
              .offsetInches = 0.0,
-             .ticksToInches = kTrackingWheelTicksToInches},
-            {.name = "sidewaysPod",
-             .role = PodRole::strafe,
-             .offsetInches = -kTrackingCenterOffsetInches,
              .ticksToInches = kTrackingWheelTicksToInches},
         },
 };

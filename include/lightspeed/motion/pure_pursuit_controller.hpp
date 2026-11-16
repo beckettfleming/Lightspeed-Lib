@@ -39,9 +39,12 @@ public:
                            const PurePursuitConfig& config);
 
     // Blocking: smooths rawWaypoints, then follows the path until settled at
-    // the final point or timed out. Stops (0,0 target) on return either way.
-    // Forward-only. No-op with fewer than 2 points.
-    void follow(const std::vector<Waypoint>& rawWaypoints);
+    // the final point or timed out. Nonzero settleCycles, lookaheadLimitInches,
+    // positionToleranceInches, and timeoutSeconds override configured values.
+    // Stops (0,0 target) on return.
+    // No-op with fewer than 2 points.
+    void follow(const std::vector<Waypoint>& rawWaypoints, bool backwards = false, std::uint32_t settleCycles = 0,
+                double lookaheadLimitInches = 0.0, double positionToleranceInches = 0.0, double timeoutSeconds = 0.0);
 
 private:
     control::DrivetrainVelocityController& drivetrain_;

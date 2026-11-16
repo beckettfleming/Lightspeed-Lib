@@ -49,7 +49,8 @@ PurePursuitController::PurePursuitController(control::DrivetrainVelocityControll
                                                const PurePursuitConfig& config)
     : drivetrain_(drivetrain), odometry_(odometry), config_(config) {}
 
-void PurePursuitController::follow(const std::vector<Waypoint>& rawWaypoints) {
+void PurePursuitController::follow(const std::vector<Waypoint>& rawWaypoints, bool backwards, std::uint32_t settleCycles,
+                                   double lookaheadLimitInches, double positionToleranceInches, double timeoutSeconds) {
     if (rawWaypoints.size() < 2) {
         return;
     }
@@ -61,6 +62,13 @@ void PurePursuitController::follow(const std::vector<Waypoint>& rawWaypoints) {
         totalPathLength += std::hypot(path[i].x - path[i - 1].x, path[i].y - path[i - 1].y);
     }
     const MotionProfile speedProfile(0.0, totalPathLength, config_.speedProfile);
+    const std::uint32_t requiredSettleCycles = settleCycles == 0 ? config_.settleCycles : settleCycles;
+    const double endToleranceInches =
+        positionToleranceInches > 0.0 ? positionToleranceInches : config_.positionToleranceInches;
+    const double moveTimeoutSeconds = timeoutSeconds > 0.0 ? timeoutSeconds : config_.timeoutSeconds;
+    const double maxLookaheadInches =
+        lookaheadLimitInches > 0.0 ? std::clamp(lookaheadLimitInches, config_.minLookaheadInches, config_.maxLookaheadInches)
+                                   : config_.maxLookaheadInches;
 
     std::size_t searchIndex = 0;
     std::uint32_t settledCycles = 0;
@@ -68,6 +76,9 @@ void PurePursuitController::follow(const std::vector<Waypoint>& rawWaypoints) {
     std::uint32_t previousTime = startTime;
     std::uint32_t previousPrintTime = startTime;
     constexpr std::uint32_t kPrintIntervalMs = 250;
+    constexpr double kTerminalApproachSpeedInchesPerSecond = 24.0;
+    constexpr double kTerminalDecelerationInchesPerSecondSquared = 30.0;
+    constexpr double kTerminalControlDistanceInches = 12.0;
 
     while (true) {
         pros::Task::delay_until(&previousTime, config_.loopPeriodMs);
@@ -79,7 +90,7 @@ void PurePursuitController::follow(const std::vector<Waypoint>& rawWaypoints) {
         const double currentSpeed = std::hypot(velocity.xInchesPerSecond, velocity.yInchesPerSecond);
 
         const double lookaheadDistance = std::clamp(config_.minLookaheadInches + config_.lookaheadSpeedGain * currentSpeed,
-                                                      config_.minLookaheadInches, config_.maxLookaheadInches);
+                                                      config_.minLookaheadInches, maxLookaheadInches);
 
         searchIndex = findClosestIndexFrom(path, pose, searchIndex);
         const Waypoint lookaheadPoint = findLookaheadPoint(path, pose, searchIndex, lookaheadDistance);
@@ -88,28 +99,43 @@ void PurePursuitController::follow(const std::vector<Waypoint>& rawWaypoints) {
         const double lSquared = local.forward * local.forward + local.strafeRight * local.strafeRight;
         const double curvature = lSquared > 1e-6 ? (2.0 * local.strafeRight / lSquared) : 0.0;
 
-        const double targetSpeed = speedProfile.sample(elapsedSeconds).velocity;
+        const double distanceToEnd = distanceToPoint(pose, path.back().x, path.back().y);
+        const double profiledSpeed = speedProfile.sample(elapsedSeconds).velocity;
+        const double stoppingDistance = std::max(0.0, distanceToEnd - endToleranceInches);
+        const double terminalSpeedCap =
+            std::sqrt(2.0 * kTerminalDecelerationInchesPerSecondSquared * stoppingDistance);
+        const bool useTerminalSpeed = distanceToEnd <= kTerminalControlDistanceInches ||
+                                      elapsedSeconds >= speedProfile.getTotalDuration();
+        const double remainingProfileSpeed = useTerminalSpeed ? kTerminalApproachSpeedInchesPerSecond : profiledSpeed;
+        const double targetSpeed = std::min(remainingProfileSpeed, terminalSpeedCap);
 
-        const WheelSpeeds wheelSpeeds = curvatureToWheelSpeeds(targetSpeed, curvature, config_.kinematics.trackWidthInches);
+        const double signedTargetSpeed = backwards ? -targetSpeed : targetSpeed;
+        const WheelSpeeds wheelSpeeds =
+            curvatureToWheelSpeeds(signedTargetSpeed, curvature, config_.kinematics.trackWidthInches);
         drivetrain_.setTargetVelocity(inchesPerSecondToRpm(wheelSpeeds.leftInchesPerSecond, config_.kinematics),
                                        inchesPerSecondToRpm(wheelSpeeds.rightInchesPerSecond, config_.kinematics));
 
-        const double distanceToEnd = distanceToPoint(pose, path.back().x, path.back().y);
-        settledCycles = distanceToEnd <= config_.positionToleranceInches ? settledCycles + 1 : 0;
+        settledCycles = distanceToEnd <= endToleranceInches ? settledCycles + 1 : 0;
 
         if (now - previousPrintTime >= kPrintIntervalMs) {
-            std::printf("[purePursuit] pose=(%.1f, %.1f, %.1fdeg) lookahead=(%.1f, %.1f) curvature=%.4f speed=%.1f\n",
+            std::printf("[purePursuit] pose=(%.1f, %.1f, %.1fdeg) lookahead=(%.1f, %.1f) curvature=%.4f speed=%.1f "
+                        "endDistance=%.2f currentSpeed=%.1f%s\n",
                         pose.xInches, pose.yInches, pose.headingDegrees, lookaheadPoint.x, lookaheadPoint.y, curvature,
-                        targetSpeed);
+                        signedTargetSpeed, distanceToEnd, currentSpeed, backwards ? " backwards" : "");
             previousPrintTime = now;
         }
 
-        if (settledCycles >= config_.settleCycles || elapsedSeconds >= config_.timeoutSeconds) {
+        const bool settled = settledCycles >= requiredSettleCycles;
+        const bool timedOut = elapsedSeconds >= moveTimeoutSeconds;
+        if (settled || timedOut) {
+            std::printf("[purePursuit] %s after %.2fs, endpoint distance=%.2fin, tolerance=%.2fin\n",
+                        settled ? "settled" : "timed out", elapsedSeconds, distanceToEnd, endToleranceInches);
             break;
         }
     }
 
     drivetrain_.setTargetVelocity(0.0, 0.0);
+    drivetrain_.coast();
 }
 
 }  // namespace lightspeed::motion

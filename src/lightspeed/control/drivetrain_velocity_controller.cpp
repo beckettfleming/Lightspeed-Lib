@@ -28,6 +28,46 @@ void DrivetrainVelocityController::setTargetVelocity(double leftRpm, double righ
     coastRequested_.store(false);
 }
 
+double DrivetrainVelocityController::getLeftTargetVelocityRpm() const {
+    return leftTargetRpm_.load();
+}
+
+double DrivetrainVelocityController::getRightTargetVelocityRpm() const {
+    return rightTargetRpm_.load();
+}
+
+double DrivetrainVelocityController::getLeftMotorVelocityRpm() const {
+    return left_.getVelocityRpm();
+}
+
+double DrivetrainVelocityController::getRightMotorVelocityRpm() const {
+    return right_.getVelocityRpm();
+}
+
+hal::HealthStatus DrivetrainVelocityController::getLeftMotorHealth() const {
+    return left_.getHealth();
+}
+
+hal::HealthStatus DrivetrainVelocityController::getRightMotorHealth() const {
+    return right_.getHealth();
+}
+
+std::uint8_t DrivetrainVelocityController::getLeftConnectedMotorCount() const {
+    return left_.getConnectedMotorCount();
+}
+
+std::uint8_t DrivetrainVelocityController::getRightConnectedMotorCount() const {
+    return right_.getConnectedMotorCount();
+}
+
+std::uint8_t DrivetrainVelocityController::getLeftMotorCount() const {
+    return left_.getMotorCount();
+}
+
+std::uint8_t DrivetrainVelocityController::getRightMotorCount() const {
+    return right_.getMotorCount();
+}
+
 void DrivetrainVelocityController::coast() {
     coastRequested_.store(true);
 }

@@ -86,9 +86,6 @@ private:
                                                                            const HealthArray& healthy,
                                                                            std::uint8_t configuredCount);
 
-    [[nodiscard]] static ConfidenceTier tierForAxis(std::uint8_t healthyCount, std::uint8_t configuredCount);
-    [[nodiscard]] static ConfidenceTier worseOf(ConfidenceTier a, ConfidenceTier b);
-
     DrivetrainKinematics kinematics_;
     IMESource& leftIme_;
     IMESource& rightIme_;

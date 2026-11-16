@@ -1,5 +1,7 @@
 #include "main.h"
 
+#include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
@@ -28,6 +30,7 @@
 #include "lightspeed/motion/drive_to_point.hpp"
 #include "lightspeed/motion/motion_constants.hpp"
 #include "lightspeed/motion/move_to_pose.hpp"
+#include "lightspeed/motion/pose_math.hpp"
 #include "lightspeed/motion/pure_pursuit_controller.hpp"
 #include "lightspeed/motion/turn_to_heading.hpp"
 #include "lightspeed/odom/ime_source.hpp"
@@ -59,6 +62,7 @@ std::optional<lightspeed::hal::MotorGroup> gWinchRight;
 std::optional<lightspeed::hal::MotorGroup> gIntake;
 std::optional<pros::adi::DigitalOut> gClawPneumatic;
 std::optional<pros::adi::DigitalOut> gHingePneumatic;
+std::optional<pros::adi::DigitalIn> gLiftMinimumLimitSwitch;
 std::optional<pros::adi::DigitalOut> gCalibratedIndicator;
 std::optional<pros::adi::DigitalOut> gCalibrationIndicator;
 bool gClawPneumaticExtended = false;
@@ -72,13 +76,11 @@ std::optional<lightspeed::control::DrivetrainVelocityController> gDrivetrain;
 
 std::optional<lightspeed::hal::Imu> gPrimaryImu;
 std::optional<lightspeed::hal::Imu> gSecondaryImu;
-std::optional<lightspeed::hal::RotationSensor> gForwardPodRotation;
-std::optional<lightspeed::hal::RotationSensor> gSidewaysPodRotation;
+std::optional<lightspeed::hal::RotationSensor> gOdometryPodRotation;
 std::optional<lightspeed::odom::IMESource> gLeftIme;
 std::optional<lightspeed::odom::IMESource> gRightIme;
 std::optional<lightspeed::odom::IMUSource> gImuSource;
-std::optional<lightspeed::odom::TrackingWheelSource> gForwardPod;
-std::optional<lightspeed::odom::TrackingWheelSource> gSidewaysPod;
+std::optional<lightspeed::odom::TrackingWheelSource> gOdometryPod;
 std::optional<lightspeed::odom::OdometryFusion> gOdometry;
 
 std::optional<lightspeed::motion::TurnToHeading> gTurnToHeading;
@@ -91,6 +93,7 @@ std::optional<lightspeed::driver::InputProfile> gInputProfile;
 std::optional<lightspeed::driver::AccelLimitResolver> gAccelLimitResolver;
 std::optional<lightspeed::control::SlewRateLimiter> gLeftAccelSlew;
 std::optional<lightspeed::control::SlewRateLimiter> gRightAccelSlew;
+std::atomic<bool> gLimpModeEnabled{false};
 
 lightspeed::auton::RoutineRegistry gRoutineRegistry;
 std::optional<lightspeed::auton::SelectorGui> gSelectorGui;
@@ -107,52 +110,125 @@ constexpr std::uint32_t kStatusIntervalMs = 1000;  // periodic heartbeat, ~1Hz
 constexpr std::uint32_t kWinchNoLoadConfirmMs = 200;
 constexpr double kWinchNoLoadCurrentMilliAmps = 500.0;
 constexpr double kWinchPositionToleranceDegrees = 1.0;
+constexpr double kHingeAutoExtendLiftDegrees = 250.0;
 constexpr std::int32_t kWinchVoltage = 12000;
+constexpr double kWinchLoweringVoltageScaleBelowHingeThreshold = 0.7;
 constexpr std::int32_t kIntakeVoltage = 12000;
-constexpr double kMotionTestSegmentInches = 6.0;
+constexpr double kMotionTestDistanceInches = 12.0;
 constexpr std::int32_t kCloseAllianceDriveVoltageLimitMillivolts = 8000;
+constexpr double kAutonomousLiftRaiseDegrees = 100.0;
+constexpr std::int32_t kAutonomousLiftVelocityRpm = 100;
+const std::vector<std::size_t> kMotionTestStartLocationIndices{0, 1};
 
 double normalizeStick(std::int32_t rawAnalog) {
 	return static_cast<double>(rawAnalog) / 127.0;
 }
 
-void runSelectorMotionTest(lightspeed::auton::AutonomousContext& ctx) {
-	constexpr double kPi = 3.14159265358979323846;
+bool commandLiftRaisedByEncoderDegrees(double raisedDegrees) {
+	const double leftStartPosition = gWinchLeft->getPositionRaw();
+	const double rightStartPosition = gWinchRight->getPositionRaw();
+	const std::int32_t leftResult =
+	    gWinchLeft->moveAbsolute(leftStartPosition - raisedDegrees, kAutonomousLiftVelocityRpm);
+	const std::int32_t rightResult =
+	    gWinchRight->moveAbsolute(rightStartPosition + raisedDegrees, kAutonomousLiftVelocityRpm);
+	if (leftResult < 0 || rightResult < 0) {
+		gWinchLeft->writeVoltage(0);
+		gWinchRight->writeVoltage(0);
+		std::printf("[autonomous] lift move failed: left=%ld right=%ld\n", static_cast<long>(leftResult),
+		            static_cast<long>(rightResult));
+		return false;
+	}
+	return true;
+}
+
+using MotionTestAction = void (*)(lightspeed::auton::AutonomousContext&, const lightspeed::odom::Pose&);
+
+void runMotionTest(lightspeed::auton::AutonomousContext& ctx, const char* name, MotionTestAction action) {
 	const lightspeed::odom::Pose start = ctx.odometry.getPose();
+	std::printf("[%s] start pose=(%.2f, %.2f, %.1fdeg)\n", name, start.xInches, start.yInches, start.headingDegrees);
+	action(ctx, start);
+	const lightspeed::odom::Pose finish = ctx.odometry.getPose();
+	std::printf("[%s] finish pose=(%.2f, %.2f, %.1fdeg), delta=(%.2f, %.2f)in, confidence=%s\n", name,
+	            finish.xInches, finish.yInches, finish.headingDegrees, finish.xInches - start.xInches,
+	            finish.yInches - start.yInches, lightspeed::odom::toString(ctx.odometry.getConfidence()));
+}
+
+void driveStraightNoHold(lightspeed::auton::AutonomousContext& ctx, const lightspeed::odom::Pose&) {
+	ctx.driveStraightDistance.run(kMotionTestDistanceInches, false);
+}
+
+void driveStraightWithHold(lightspeed::auton::AutonomousContext& ctx, const lightspeed::odom::Pose&) {
+	ctx.driveStraightDistance.run(kMotionTestDistanceInches);
+}
+
+void turnToHeadingTest(lightspeed::auton::AutonomousContext& ctx, const lightspeed::odom::Pose& start) {
+	ctx.turnToHeading.run(start.headingDegrees + 90.0);
+}
+
+void turnToPointTest(lightspeed::auton::AutonomousContext& ctx, const lightspeed::odom::Pose& start) {
+	constexpr double kPi = 3.14159265358979323846;
 	const double headingRadians = start.headingDegrees * kPi / 180.0;
-	const double forwardX = std::sin(headingRadians) * kMotionTestSegmentInches;
-	const double forwardY = std::cos(headingRadians) * kMotionTestSegmentInches;
-	const double rightX = std::cos(headingRadians) * kMotionTestSegmentInches;
-	const double rightY = -std::sin(headingRadians) * kMotionTestSegmentInches;
+	const double targetX = start.xInches + std::sin(headingRadians) * 12.0 + std::cos(headingRadians) * 12.0;
+	const double targetY = start.yInches + std::cos(headingRadians) * 12.0 - std::sin(headingRadians) * 12.0;
+	ctx.driveToPoint.turnToPoint(targetX, targetY);
+}
 
-	const double forwardTargetX = start.xInches + forwardX;
-	const double forwardTargetY = start.yInches + forwardY;
-	const double sideTargetX = forwardTargetX + rightX;
-	const double sideTargetY = forwardTargetY + rightY;
-	const double finalTargetX = sideTargetX + rightX;
-	const double finalTargetY = sideTargetY + rightY;
-	const double sideHeading = start.headingDegrees + 90.0;
+void driveToPointTest(lightspeed::auton::AutonomousContext& ctx, const lightspeed::odom::Pose& start) {
+	constexpr double kPi = 3.14159265358979323846;
+	const double headingRadians = start.headingDegrees * kPi / 180.0;
+	const double targetX = start.xInches + std::sin(headingRadians) * 12.0 + std::cos(headingRadians) * 6.0;
+	const double targetY = start.yInches + std::cos(headingRadians) * 12.0 - std::sin(headingRadians) * 6.0;
+	ctx.driveToPoint.driveToPoint(targetX, targetY);
+}
 
-	ctx.driveStraightDistance.run(kMotionTestSegmentInches);
-	ctx.turnToHeading.run(sideHeading);
-	ctx.driveToPoint.driveToPoint(sideTargetX, sideTargetY);
-	ctx.moveToPose.run(finalTargetX, finalTargetY, sideHeading);
+void moveToPoseTest(lightspeed::auton::AutonomousContext& ctx, const lightspeed::odom::Pose& start) {
+	constexpr double kPi = 3.14159265358979323846;
+	const double headingRadians = start.headingDegrees * kPi / 180.0;
+	const double targetX = start.xInches + std::sin(headingRadians) * 12.0;
+	const double targetY = start.yInches + std::cos(headingRadians) * 12.0;
+	ctx.moveToPose.run(targetX, targetY, start.headingDegrees + 90.0);
+}
 
-	const std::vector<lightspeed::motion::Waypoint> returnPath{
-	    {finalTargetX, finalTargetY},
-	    {sideTargetX, sideTargetY},
-	    {forwardTargetX, forwardTargetY},
+void purePursuitTest(lightspeed::auton::AutonomousContext& ctx, const lightspeed::odom::Pose& start) {
+	constexpr double kPi = 3.14159265358979323846;
+	const double headingRadians = start.headingDegrees * kPi / 180.0;
+	const double forwardX = std::sin(headingRadians) * kMotionTestDistanceInches;
+	const double forwardY = std::cos(headingRadians) * kMotionTestDistanceInches;
+	const double rightX = std::cos(headingRadians) * 6.0;
+	const double rightY = -std::sin(headingRadians) * 6.0;
+	const std::vector<lightspeed::motion::Waypoint> path{
 	    {start.xInches, start.yInches},
+	    {start.xInches + forwardX, start.yInches + forwardY},
+	    {start.xInches + forwardX + rightX, start.yInches + forwardY + rightY},
 	};
-	ctx.purePursuit.follow(returnPath);
+	ctx.purePursuit.follow(path);
 }
 
 void runCloseAlliance(lightspeed::auton::AutonomousContext& ctx) {
 	ctx.drivetrain.setMaxOutputVoltageMillivolts(kCloseAllianceDriveVoltageLimitMillivolts);
 	ctx.driveStraightDistance.run(2.0, false);
-	ctx.driveStraightDistance.run(-1.5, false);
-	ctx.driveStraightDistance.run(2.0, false);
+	ctx.driveStraightDistance.run(-1.75, false);
+	ctx.driveStraightDistance.run(2.5, false);
 	ctx.drivetrain.setMaxOutputVoltageMillivolts(12000);
+
+	constexpr double kTargetX = 19.0;
+	constexpr double kTargetY = 18.5;
+	constexpr lightspeed::motion::MotionProfileConfig kBackwardMoveProfile{
+	    .maxVelocity = 28.0,
+	    .maxAcceleration = 40.0,
+	    .maxJerk = 0.0,
+	};
+	const lightspeed::odom::Pose start = ctx.odometry.getPose();
+	const double targetHeading = lightspeed::motion::headingToPoint(start, kTargetX, kTargetY);
+	const double backwardsHeading = targetHeading + 180.0;
+	const double distance = lightspeed::motion::distanceToPoint(start, kTargetX, kTargetY);
+	ctx.turnToHeading.run(backwardsHeading);
+	if (!commandLiftRaisedByEncoderDegrees(kAutonomousLiftRaiseDegrees)) {
+		return;
+	}
+	gHingePneumaticExtended = true;
+	gHingePneumatic->set_value(gHingePneumaticExtended);
+	ctx.driveStraightDistance.run(-distance, false, kBackwardMoveProfile);
 }
 
 }  // namespace
@@ -170,6 +246,7 @@ void initialize() {
 	gIntake.emplace(hal::config::kIntakeGroup);
 	gClawPneumatic.emplace(hal::config::adi_port::kClawPneumatic);
 	gHingePneumatic.emplace(hal::config::adi_port::kHingePneumatic);
+	gLiftMinimumLimitSwitch.emplace(hal::config::adi_port::kLiftMinimumLimitSwitch);
 	gCalibratedIndicator.emplace(hal::config::adi_port::kCalibratedIndicator);
 	gCalibrationIndicator.emplace(hal::config::adi_port::kCalibrationIndicator);
 	gWinchLeft->setBrakeMode(pros::E_MOTOR_BRAKE_HOLD);
@@ -188,16 +265,14 @@ void initialize() {
 		gCalibrationIndicator->set_value(false);
 		gCalibratedIndicator->set_value(true);
 	}
-	gForwardPodRotation.emplace(hal::config::kForwardPodRotation.port);
-	gSidewaysPodRotation.emplace(hal::config::kSidewaysPodRotation.port);
+	gOdometryPodRotation.emplace(hal::config::kOdometryPodRotation.port);
 
 	gLeftIme.emplace(*gLeftDrive, odom::kDriveImeConfig);
 	gRightIme.emplace(*gRightDrive, odom::kDriveImeConfig);
 	gImuSource.emplace(*gPrimaryImu, &*gSecondaryImu);
-	gForwardPod.emplace(*gForwardPodRotation, odom::kCherenkovTopology.pods[0]);
-	gSidewaysPod.emplace(*gSidewaysPodRotation, odom::kCherenkovTopology.pods[1]);
+	gOdometryPod.emplace(*gOdometryPodRotation, odom::kCherenkovTopology.pods[0]);
 
-	std::vector<odom::TrackingWheelSource*> pods{&*gForwardPod, &*gSidewaysPod};
+	std::vector<odom::TrackingWheelSource*> pods{&*gOdometryPod};
 	gOdometry.emplace(odom::kCherenkovTopology.kinematics, *gLeftIme, *gRightIme, *gImuSource, pods);
 
 	gTurnToHeading.emplace(*gDrivetrain, *gOdometry, motion::kTurnToHeadingConfig);
@@ -214,11 +289,46 @@ void initialize() {
 	gRoutineRegistry.registerRoutine(auton::demo::makeDemoStraightAndTurnRoutine());
 	gRoutineRegistry.registerRoutine(auton::demo::makeDemoPursuitPathRoutine());
 	gRoutineRegistry.registerRoutine(auton::Routine{
-	    .name = "Test: Selector + Motion",
-	    .validStartLocationIndices = {},
-	    .previewPoints = {{12.0, 12.0}, {12.0, 18.0}, {18.0, 18.0}, {24.0, 18.0},
-	                      {18.0, 18.0}, {12.0, 18.0}, {12.0, 12.0}},
-	    .run = runSelectorMotionTest,
+	    .name = "Test: Straight 12in, No Hold",
+	    .validStartLocationIndices = kMotionTestStartLocationIndices,
+	    .previewPoints = {{12.0, 12.0}, {12.0, 24.0}},
+	    .run = [](auton::AutonomousContext& ctx) { runMotionTest(ctx, "straightNoHold", driveStraightNoHold); },
+	});
+	gRoutineRegistry.registerRoutine(auton::Routine{
+	    .name = "Test: Straight 12in + Hold",
+	    .validStartLocationIndices = kMotionTestStartLocationIndices,
+	    .previewPoints = {{12.0, 12.0}, {12.0, 24.0}},
+	    .run = [](auton::AutonomousContext& ctx) { runMotionTest(ctx, "straightWithHold", driveStraightWithHold); },
+	});
+	gRoutineRegistry.registerRoutine(auton::Routine{
+	    .name = "Test: Turn +90deg",
+	    .validStartLocationIndices = kMotionTestStartLocationIndices,
+	    .previewPoints = {{12.0, 12.0}},
+	    .run = [](auton::AutonomousContext& ctx) { runMotionTest(ctx, "turnToHeading", turnToHeadingTest); },
+	});
+	gRoutineRegistry.registerRoutine(auton::Routine{
+	    .name = "Test: Turn To Point",
+	    .validStartLocationIndices = kMotionTestStartLocationIndices,
+	    .previewPoints = {{12.0, 12.0}, {24.0, 24.0}},
+	    .run = [](auton::AutonomousContext& ctx) { runMotionTest(ctx, "turnToPoint", turnToPointTest); },
+	});
+	gRoutineRegistry.registerRoutine(auton::Routine{
+	    .name = "Test: Drive To Point",
+	    .validStartLocationIndices = kMotionTestStartLocationIndices,
+	    .previewPoints = {{12.0, 12.0}, {18.0, 24.0}},
+	    .run = [](auton::AutonomousContext& ctx) { runMotionTest(ctx, "driveToPoint", driveToPointTest); },
+	});
+	gRoutineRegistry.registerRoutine(auton::Routine{
+	    .name = "Test: Move To Pose",
+	    .validStartLocationIndices = kMotionTestStartLocationIndices,
+	    .previewPoints = {{12.0, 12.0}, {12.0, 24.0}},
+	    .run = [](auton::AutonomousContext& ctx) { runMotionTest(ctx, "moveToPose", moveToPoseTest); },
+	});
+	gRoutineRegistry.registerRoutine(auton::Routine{
+	    .name = "Test: Pure Pursuit",
+	    .validStartLocationIndices = kMotionTestStartLocationIndices,
+	    .previewPoints = {{12.0, 12.0}, {12.0, 24.0}, {18.0, 24.0}},
+	    .run = [](auton::AutonomousContext& ctx) { runMotionTest(ctx, "purePursuit", purePursuitTest); },
 	});
 	gRoutineRegistry.registerRoutine(auton::Routine{
 	    .name = "closeAlliance",
@@ -241,7 +351,7 @@ void initialize() {
 	// here is safe.
 	gSdLogger.emplace(telemetry::TelemetryBus::instance());
 	gSdLogger->start();
-	gDashboard.emplace(*gOdometry);
+	gDashboard.emplace(*gOdometry, *gDrivetrain, gLimpModeEnabled);
 	gDashboard->start();
 }
 
@@ -305,32 +415,74 @@ void opcontrol() {
 	gSelectorGui->stop();
 
 	pros::Controller master(pros::E_CONTROLLER_MASTER);
+	std::int32_t liftMinimumSwitchValue = gLiftMinimumLimitSwitch->get_value();
+	bool previousLiftMinimumActive = liftMinimumSwitchValue == 1;
+	bool liftMinimumSwitchStateKnown = liftMinimumSwitchValue == 0 || liftMinimumSwitchValue == 1;
+	bool liftMinimumSwitchErrorReported = false;
+
+	gLimpModeEnabled.store(false);
+	gLeftAccelSlew->reset();
+	gRightAccelSlew->reset();
+	gDrivetrain->setTargetVelocity(0.0, 0.0);
+	gDrivetrain->coast();
 
 	double previousAccelLimit = driver::kDriveAccelLimitConfig.defaultMaxRpmPerSecond;
 	std::uint32_t previousStatusTime = pros::millis();
 
 	while (true) {
+		if (master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_UP)) {
+			const bool limpModeEnabled = !gLimpModeEnabled.load();
+			gLimpModeEnabled.store(limpModeEnabled);
+			gLeftAccelSlew->reset();
+			gRightAccelSlew->reset();
+			if (limpModeEnabled) {
+				gDrivetrain->setTargetVelocity(0.0, 0.0);
+				gDrivetrain->coast();
+			}
+			std::printf("[opcontrol] limp mode %s\n", limpModeEnabled ? "enabled" : "disabled");
+		}
+
 		if (master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_Y)) {
 			gClawPneumaticExtended = !gClawPneumaticExtended;
 			gClawPneumatic->set_value(gClawPneumaticExtended);
 		}
-		if (master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_RIGHT)) {
-			gHingePneumaticExtended = !gHingePneumaticExtended;
+		liftMinimumSwitchValue = gLiftMinimumLimitSwitch->get_value();
+		if (liftMinimumSwitchValue == 0 || liftMinimumSwitchValue == 1) {
+			const bool liftMinimumActive = liftMinimumSwitchValue == 1;
+			if (liftMinimumSwitchStateKnown && previousLiftMinimumActive && !liftMinimumActive) {
+				gClawPneumaticExtended = false;
+				gClawPneumatic->set_value(gClawPneumaticExtended);
+			}
+			previousLiftMinimumActive = liftMinimumActive;
+			liftMinimumSwitchStateKnown = true;
+			liftMinimumSwitchErrorReported = false;
+		} else if (!liftMinimumSwitchErrorReported) {
+			std::printf("[opcontrol] lift minimum limit switch read failed: %ld\n",
+			            static_cast<long>(liftMinimumSwitchValue));
+			liftMinimumSwitchErrorReported = true;
+		}
+		const double liftRaisedDegrees =
+		    ((gWinchLeftStartingPosition - gWinchLeft->getPositionRaw()) +
+		     (gWinchRight->getPositionRaw() - gWinchRightStartingPosition)) /
+		    2.0;
+		const bool shouldExtendHinge = liftRaisedDegrees > kHingeAutoExtendLiftDegrees;
+		if (gHingePneumaticExtended != shouldExtendHinge) {
+			gHingePneumaticExtended = shouldExtendHinge;
 			gHingePneumatic->set_value(gHingePneumaticExtended);
 		}
 
 		// -- Input profiling --
 		const driver::JoystickInput rawInput{
-		    .leftY = -normalizeStick(master.get_analog(ANALOG_LEFT_Y)),
+		    .leftY = normalizeStick(master.get_analog(ANALOG_LEFT_Y)),
 		    .leftX = normalizeStick(master.get_analog(ANALOG_LEFT_X)),
 		    .rightY = normalizeStick(master.get_analog(ANALOG_RIGHT_Y)),
-		    .rightX = -normalizeStick(master.get_analog(ANALOG_RIGHT_X)),
+		    .rightX = normalizeStick(master.get_analog(ANALOG_RIGHT_X)),
 		};
 		const driver::JoystickInput profiledInput{
-		    .leftY = gInputProfile->apply(rawInput.rightX),
-		    .leftX = gInputProfile->apply(rawInput.rightY),
-		    .rightY = gInputProfile->apply(rawInput.leftX),
-		    .rightX = gInputProfile->apply(rawInput.leftY),
+		    .leftY = gInputProfile->apply(rawInput.leftY),
+		    .leftX = gInputProfile->apply(rawInput.leftX),
+		    .rightY = gInputProfile->apply(rawInput.rightY),
+		    .rightX = gInputProfile->apply(rawInput.rightX),
 		};
 
 		// -- Drive-mode transform --
@@ -344,7 +496,11 @@ void opcontrol() {
 		gRightAccelSlew->setMaxRate(accelLimit);
 		double leftSlewedRpm = 0.0;
 		double rightSlewedRpm = 0.0;
-		if (leftTargetRpm == 0.0 && rightTargetRpm == 0.0) {
+		if (gLimpModeEnabled.load()) {
+			gLeftAccelSlew->reset();
+			gRightAccelSlew->reset();
+			gDrivetrain->coast();
+		} else if (leftTargetRpm == 0.0 && rightTargetRpm == 0.0) {
 			gLeftAccelSlew->reset();
 			gRightAccelSlew->reset();
 			gDrivetrain->coast();
@@ -389,8 +545,12 @@ void opcontrol() {
 		               gWinchLeftStartingPosition - kWinchPositionToleranceDegrees &&
 		           gWinchRight->getPositionRaw() >
 		               gWinchRightStartingPosition + kWinchPositionToleranceDegrees) {
-			gWinchLeft->writeVoltage(kWinchVoltage);
-			gWinchRight->writeVoltage(-kWinchVoltage);
+			const std::int32_t loweringVoltage =
+			    liftRaisedDegrees <= kHingeAutoExtendLiftDegrees
+			        ? static_cast<std::int32_t>(kWinchVoltage * kWinchLoweringVoltageScaleBelowHingeThreshold)
+			        : kWinchVoltage;
+			gWinchLeft->writeVoltage(loweringVoltage);
+			gWinchRight->writeVoltage(-loweringVoltage);
 		} else {
 			gWinchLeft->writeVoltage(0);
 			gWinchRight->writeVoltage(0);

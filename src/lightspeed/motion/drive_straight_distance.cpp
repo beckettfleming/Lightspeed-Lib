@@ -12,10 +12,14 @@ DriveStraightDistance::DriveStraightDistance(control::DrivetrainVelocityControll
     : drivetrain_(drivetrain), odometry_(odometry), config_(config), distancePidf_(config.distancePidf) {}
 
 void DriveStraightDistance::run(double distanceInches, bool holdHeading) {
+    run(distanceInches, holdHeading, config_.motionProfile);
+}
+
+void DriveStraightDistance::run(double distanceInches, bool holdHeading, const MotionProfileConfig& motionProfile) {
     distancePidf_.reset();
 
     const odom::Pose startPose = odometry_.getPose();
-    const MotionProfile profile(0.0, distanceInches, config_.motionProfile);
+    const MotionProfile profile(0.0, distanceInches, motionProfile);
 
     const std::uint32_t startTime = pros::millis();
     std::uint32_t previousTime = startTime;
@@ -43,12 +47,17 @@ void DriveStraightDistance::run(double distanceInches, bool holdHeading) {
 
         const WheelSpeeds wheelSpeeds =
             angularVelocityToWheelSpeeds(targetForwardSpeed, headingCorrection, config_.kinematics.trackWidthInches);
-        drivetrain_.setTargetVelocity(inchesPerSecondToRpm(wheelSpeeds.leftInchesPerSecond, config_.kinematics),
-                                       inchesPerSecondToRpm(wheelSpeeds.rightInchesPerSecond, config_.kinematics));
+        const double leftTargetRpm = inchesPerSecondToRpm(wheelSpeeds.leftInchesPerSecond, config_.kinematics);
+        const double rightTargetRpm = inchesPerSecondToRpm(wheelSpeeds.rightInchesPerSecond, config_.kinematics);
+        drivetrain_.setTargetVelocity(leftTargetRpm, rightTargetRpm);
 
         if (now - previousPrintTime >= kPrintIntervalMs) {
-            std::printf("[driveStraight] target=%.2fin actual=%.2fin heading=%.1fdeg (start %.1fdeg)\n",
-                        profileState.position, traveledDistance, currentPose.headingDegrees, startPose.headingDegrees);
+            std::printf(
+                "[driveStraight] target=%.2fin actual=%.2fin heading=%.1fdeg (start %.1fdeg) "
+                "error=%.1fdeg correction=%.1fdeg/s wheels target=(%.0f, %.0f)rpm measured=(%.0f, %.0f)rpm\n",
+                profileState.position, traveledDistance, currentPose.headingDegrees, startPose.headingDegrees, headingError,
+                headingCorrection, leftTargetRpm, rightTargetRpm, drivetrain_.getLeftMotorVelocityRpm(),
+                drivetrain_.getRightMotorVelocityRpm());
             previousPrintTime = now;
         }
 

@@ -42,6 +42,7 @@ public:
     // the start of the call unless holdHeading is false. Stops (0,0 target)
     // on return.
     void run(double distanceInches, bool holdHeading = true);
+    void run(double distanceInches, bool holdHeading, const MotionProfileConfig& motionProfile);
 
 private:
     control::DrivetrainVelocityController& drivetrain_;

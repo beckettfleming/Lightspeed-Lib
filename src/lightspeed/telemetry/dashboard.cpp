@@ -7,7 +7,9 @@
 
 namespace lightspeed::telemetry {
 
-Dashboard::Dashboard(const odom::OdometryFusion& odometry) : odometry_(odometry) {}
+Dashboard::Dashboard(const odom::OdometryFusion& odometry, const control::DrivetrainVelocityController& drivetrain,
+                     const std::atomic<bool>& limpModeEnabled)
+    : odometry_(odometry), drivetrain_(drivetrain), limpModeEnabled_(limpModeEnabled) {}
 
 Dashboard::~Dashboard() {
     if (task_.has_value()) {
@@ -28,11 +30,9 @@ void Dashboard::dashboardLoop() {
     while (true) {
         pros::Task::delay_until(&previousTime, kDashboardLoopPeriodMs);
 
-        // Only the driver-control period is ours to draw in: the selector
-        // owns the screen while disabled, and no one draws during
-        // autonomous() (it stops the selector but doesn't hand off to us).
-        const bool driverControlPeriod = !pros::competition::is_disabled() && !pros::competition::is_autonomous();
-        if (driverControlPeriod) {
+        // The selector owns the screen while disabled. During enabled
+        // operation, show live odometry in both autonomous and driver control.
+        if (!pros::competition::is_disabled()) {
             draw();
         }
     }
@@ -54,6 +54,27 @@ void Dashboard::draw() const {
 
     pros::screen::print(pros::E_TEXT_MEDIUM, kDashboardConfidenceLine, "Odometry confidence: %s",
                          odom::toString(odometry_.getConfidence()));
+
+    pros::screen::print(pros::E_TEXT_MEDIUM, kDashboardDriveVelocityLine,
+                         "Drive RPM target/measured L %.0f/%.0f R %.0f/%.0f",
+                         drivetrain_.getLeftTargetVelocityRpm(), drivetrain_.getLeftMotorVelocityRpm(),
+                         drivetrain_.getRightTargetVelocityRpm(), drivetrain_.getRightMotorVelocityRpm());
+
+    drawDriveHealth();
+
+    pros::screen::print(pros::E_TEXT_MEDIUM, kDashboardDriveModeLine, "Drive mode: %s",
+                         limpModeEnabled_.load() ? "LIMP (UP = drive)" : "DRIVE (UP = limp)");
+}
+
+void Dashboard::drawDriveHealth() const {
+    pros::screen::print(pros::E_TEXT_MEDIUM, kDashboardDriveHealthLine,
+                         "Drive health L %s %u/%u R %s %u/%u",
+                         hal::toString(drivetrain_.getLeftMotorHealth()),
+                         static_cast<unsigned>(drivetrain_.getLeftConnectedMotorCount()),
+                         static_cast<unsigned>(drivetrain_.getLeftMotorCount()),
+                         hal::toString(drivetrain_.getRightMotorHealth()),
+                         static_cast<unsigned>(drivetrain_.getRightConnectedMotorCount()),
+                         static_cast<unsigned>(drivetrain_.getRightMotorCount()));
 }
 
 }  // namespace lightspeed::telemetry

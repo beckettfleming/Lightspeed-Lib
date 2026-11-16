@@ -37,14 +37,12 @@ inline constexpr std::int8_t kLeftDriveFront = 4;
 inline constexpr std::int8_t kLeftDriveMiddle = 5;
 inline constexpr std::int8_t kLeftDriveRear = 6;
 
-inline constexpr std::int8_t kForwardPodRotation = 7;
-inline constexpr std::int8_t kSidewaysPodRotation = 8;
-
 inline constexpr std::uint8_t kPrimaryImu = 9;
 inline constexpr std::uint8_t kSecondaryImu = 10;
 inline constexpr std::int8_t kWinchLeft = 11;
 inline constexpr std::int8_t kIntake = -12;
 inline constexpr std::int8_t kWinchRight = 13;
+inline constexpr std::int8_t kOdometryPodRotation = 21;
 
 }  // namespace port
 
@@ -54,6 +52,7 @@ inline constexpr std::uint8_t kCalibratedIndicator = 'A';
 inline constexpr std::uint8_t kCalibrationIndicator = 'B';
 inline constexpr std::uint8_t kClawPneumatic = 'C';
 inline constexpr std::uint8_t kHingePneumatic = 'D';
+inline constexpr std::uint8_t kLiftMinimumLimitSwitch = 'E';
 
 }  // namespace adi_port
 
@@ -66,7 +65,7 @@ struct MotorGroupConfig {
 
 inline const MotorGroupConfig kLeftDriveGroup{
     "leftDriveGroup",
-    {port::kLeftDriveFront, port::kLeftDriveMiddle, port::kLeftDriveRear},
+    {-port::kLeftDriveFront, -port::kLeftDriveMiddle, -port::kLeftDriveRear},
     pros::v5::MotorGears::blue,
     pros::v5::MotorUnits::degrees,
 };
@@ -118,7 +117,6 @@ struct AiVisionConfig {
 inline const ImuConfig kPrimaryImu{"primaryImu", port::kPrimaryImu};
 inline const ImuConfig kSecondaryImu{"secondaryImu", port::kSecondaryImu};
 
-inline const RotationSensorConfig kForwardPodRotation{"forwardPodRotation", port::kForwardPodRotation};
-inline const RotationSensorConfig kSidewaysPodRotation{"sidewaysPodRotation", port::kSidewaysPodRotation};
+inline const RotationSensorConfig kOdometryPodRotation{"odometryPodRotation", port::kOdometryPodRotation};
 
 }  // namespace lightspeed::hal::config

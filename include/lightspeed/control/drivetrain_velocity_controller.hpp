@@ -55,6 +55,17 @@ public:
     // control task picks up the latest value each cycle.
     void setTargetVelocity(double leftRpm, double rightRpm);
 
+    [[nodiscard]] double getLeftTargetVelocityRpm() const;
+    [[nodiscard]] double getRightTargetVelocityRpm() const;
+    [[nodiscard]] double getLeftMotorVelocityRpm() const;
+    [[nodiscard]] double getRightMotorVelocityRpm() const;
+    [[nodiscard]] hal::HealthStatus getLeftMotorHealth() const;
+    [[nodiscard]] hal::HealthStatus getRightMotorHealth() const;
+    [[nodiscard]] std::uint8_t getLeftConnectedMotorCount() const;
+    [[nodiscard]] std::uint8_t getRightConnectedMotorCount() const;
+    [[nodiscard]] std::uint8_t getLeftMotorCount() const;
+    [[nodiscard]] std::uint8_t getRightMotorCount() const;
+
     // Requests zero voltage until the next velocity target. This is
     // non-blocking; the control task applies it on its next cycle.
     void coast();
