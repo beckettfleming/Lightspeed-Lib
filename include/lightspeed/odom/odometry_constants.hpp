@@ -33,7 +33,9 @@ inline const TopologyConfig kCherenkovTopology{
 
 inline const IMEConfig kDriveImeConfig{
     .wheelDiameterInches = 2.75,
-    .gearRatio = 3.0 / 4.0,
+    // Must match motion::kCherenkovKinematics.gearRatio -- measured ~1:1
+    // (8.54in per motor rev), see the comment there.
+    .gearRatio = 8.54 / (detail::kPi * 2.75),
 };
 
 }  // namespace lightspeed::odom

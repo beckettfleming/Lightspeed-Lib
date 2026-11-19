@@ -116,21 +116,147 @@ constexpr double kWinchLoweringVoltageScaleBelowHingeThreshold = 0.7;
 constexpr std::int32_t kIntakeVoltage = 12000;
 constexpr double kMotionTestDistanceInches = 12.0;
 constexpr std::int32_t kCloseAllianceDriveVoltageLimitMillivolts = 8000;
-constexpr double kAutonomousLiftRaiseDegrees = 100.0;
+// Toggle bumps: 2in moves under the normal 60in/s^2 profile (and overshoot
+// guard) are too gentle to flip the toggle after the 2026-11-19 gearing fix.
+// Raise maxAcceleration for a harder hit; the voltage limit above still caps
+// how hard it can push.
+const lightspeed::motion::MotionProfileConfig kCloseAllianceToggleProfile{
+    .maxVelocity = 40.0,
+    .maxAcceleration = 100.0,  // 120 flipped it well but rocked the robot on each reversal
+    .maxJerk = 0.0,  // plain trapezoid -- jerk-limiting just softens a 2in move
+};
+// Each toggle bump may end pressed against the toggle short of its distance
+// (2026-11-19: third bump pinned at 1.49/2.5in, pushing for 4.5s until the
+// default 5s timeout). A 2in bump takes ~0.3s, so this is plenty to finish.
+constexpr double kCloseAllianceToggleTimeoutSeconds = 0.75;
+// Toggle wiggle: push, back up, push again. The back-up was 1.75in -- not
+// enough run-up to catch the second toggle (2026-11-19). Backing up 0.5in more
+// gives the second push more speed when it arrives; the second push grows by
+// the same 0.5in so it still reaches the same spot.
+constexpr double kCloseAllianceToggleFirstPushInches = 2.0;
+constexpr double kCloseAllianceToggleBackUpInches = 2.25;
+constexpr double kCloseAllianceToggleSecondPushInches = 3.0;
+// Pause after backing up, before the second push, so the toggle has time to
+// reseat (2026-11-19: second push arrived ~immediately and missed the flip).
+// The drivetrain holds 0 speed during it.
+constexpr std::uint32_t kCloseAllianceToggleReseatMs = 300;
+constexpr double kAutonomousLiftRaiseDegrees = 85.0;
 constexpr std::int32_t kAutonomousLiftVelocityRpm = 100;
+constexpr double kCloseAllianceGoalBackInches = 10;
+// The goal physically stops the robot at left ~17.6 -- the right spot (confirmed
+// 2026-11-19). 18.0 puts that within the 0.5in tolerance so the path settles
+// there instead of pushing into the goal until its timeout (was 18.5: ~2.5s
+// wasted pushing every run).
+constexpr double kCloseAllianceGoalLeftInches = 18.0;
+// How close (in) the goal path must get before it counts as arrived, and how
+// long it may try. A stall can no longer eat the 8s default timeout.
+constexpr double kCloseAllianceGoalToleranceInches = 0.5;
+constexpr double kCloseAllianceGoalTimeoutSeconds = 3.0;
+constexpr std::uint32_t kCloseAllianceLiftWaitTimeoutMs = 1000;
+// Quarter-arc radius for the swing into the goal; the final straight reverse
+// into the goal is (kCloseAllianceGoalLeftInches - this) long. Must be
+// <= kCloseAllianceGoalLeftInches. Smaller = longer straight approach, tighter turn.
+constexpr double kCloseAllianceTurnRadiusInches = 14.0;
+// Shortest allowed straight reverse into the goal after the arc.
+constexpr double kCloseAllianceMinFinalStraightInches = 4.0;
+// Lookahead cap for the goal path. The default (up to 18in) is bigger than the
+// arc itself, so the robot would cut the turn and arrive crooked.
+constexpr double kCloseAllianceGoalLookaheadInches = 9.0;
+// Before opening the claw at the goal: max wait for the lift, and how close
+// counts as "up". Loose + short so scoring isn't held up by the lift's final
+// settle.
+constexpr std::uint32_t kCloseAllianceScoreLiftWaitTimeoutMs = 250;
+constexpr double kCloseAllianceScoreLiftToleranceDegrees = 5.0;
+// Pause after opening the claw before pulling away from the goal.
+constexpr std::uint32_t kCloseAllianceClawReleaseMs = 500;
+// Second leg: drive forward off the goal to this point (same start-relative
+// frame as the goal: back of / left of the starting pose).
+// Field ~(9, 31) from the Close Alliance start (0, 11.375, 180deg).
+constexpr double kCloseAllianceSecondBackInches = 19.625;
+constexpr double kCloseAllianceSecondLeftInches = 9.0;
+// After the second leg: turn to start heading + this (clockwise-positive),
+// and raise the lift this much further on top of kAutonomousLiftRaiseDegrees.
+// 41 not 40: the turn reliably settles ~1deg short (219.0-219.3 vs 220 over
+// several runs, inside its 1deg window), leaving the aim at pair 1 incomplete.
+constexpr double kCloseAllianceTurnRelativeDegrees = 41.0;
+constexpr double kCloseAllianceSecondLiftRaiseDegrees = 170.0;
+// After the turn: drive straight backward this far.
+constexpr double kCloseAllianceFinalReverseInches = 17.75;
+
+// ===== Cup + pin pairs (after the final reverse) =====
+// Lift heights, degrees above the power-on (bottom) position (the encoder
+// reading the lift code uses). 8in / 0.625in spool radius = 733deg went far
+// too high (2026-11-19), so the lift isn't 1:1 spool-on-motor (likely a
+// multi-stage/cascade lift or gearing). MEASURE instead: in driver control,
+// raise the lift to each height by hand; the terminal status line prints
+// "lift=NNNdeg" once a second. TODO: replace these placeholder guesses.
+constexpr double kPairPickupLiftDegrees = 0.0;  // lowered to grab a pair
+constexpr double kPairScoreLiftDegrees = 350.0; // carried while backing in: clears the goal + scored pin
+constexpr double kPairClearLiftDegrees = 400.0; // after releasing, so the claw lifts clear of the pair
+constexpr std::uint32_t kPairLiftWaitTimeoutMs = 2500;  // 733deg at 100rpm is ~1.2s
+constexpr double kPairLiftToleranceDegrees = 5.0;
+constexpr std::uint32_t kPairGrabSettleMs = 300;  // after closing the claw, before lifting
+// Goal approach for pairs: from the pickup point, turn so the back faces the
+// goal's CENTER and reverse straight at it, stopping when the robot's center
+// is kGoalContactDistanceInches from it -- the same spacing as when the pin
+// was scored. (Aiming at the pin-scoring robot position instead, as before,
+// only works approaching from the pin's direction; from anywhere else the
+// goal ends up off to the side -- 2026-11-19, pair 1 landed well off.)
+// Robot tracking center -> goal center at contact = how far behind the
+// turning center the robot touches (2.375in, measured) + goal radius (6in).
+constexpr double kRobotContactBehindCenterInches = 2.375;
+constexpr double kGoalRadiusInches = 6.0;
+constexpr double kGoalContactDistanceInches = kRobotContactBehindCenterInches + kGoalRadiusInches;
+constexpr double kPairGoalTimeoutSeconds = 3.0;
+// Field trim for each pair's goal approach (2026-11-19: pair 1 needed to back
+// in further and sit a couple inches more to the right). "Right" = the
+// robot's right while it backs in (facing away from the goal). Negative
+// values go the other way. Pair 2 comes at the goal from a different side,
+// so it gets its own trim. TODO: tune pair 2.
+constexpr double kPairGoalExtraBackInches = 1.5;
+constexpr double kPairGoalShiftRightInches = 2.0;
+constexpr double kPair2GoalExtraBackInches = 3.0;  // 1.5 stopped short (2026-11-19)
+constexpr double kPair2GoalShiftRightInches = 0.0;
+// After scoring pair 1, drive forward this far off the goal before heading to
+// pair 2, so the turn doesn't drag the claw/lift across the scored pair.
+constexpr double kPairGoalPullOffInches = 6.0;
+// Route to pair 2: reverse from the pull-off spot to this staging point first,
+// then straight to the pickup. Reversing diagonally from the pull-off spot
+// swung the robot's back straight into the goal (2026-11-19: hit it after
+// ~4in). Staging = level with the pull-off spot (start-frame "back" ~23 ->
+// field y ~34, well clear of the goal) and level with the pickup ("left"), so
+// the last leg comes straight down onto the pair. TODO: confirm on the field
+// with the driver-control pose readout.
+constexpr double kPair2StagingBackInches = 23.0;
+// Pickup trim. Was -6 for the old diagonal approach; the staging route comes
+// in from a different direction, so "right" means something else now. Reset
+// to 0 -- re-tune once the route is right.
+constexpr double kPair2PickupShiftRightInches = 0.0;
+// After the pin's curved path settles, push back this much more to seat onto
+// the goal (the path stops at the edge of its tolerance, short of seated).
+// Overshoot guard off: pressing into the goal is the point. Was 0.75 / 0.5s:
+// still not seated far enough to score (2026-11-19).
+constexpr double kGoalSeatPushInches = 1.5;
+constexpr double kGoalSeatPushTimeoutSeconds = 0.75;
+// Second pair pickup: tracking-center stop 24in left of the goal, measured in
+// the same start-relative back/left frame as the goal coordinates.
+constexpr bool kSecondPairPositionSet = true;
+constexpr double kSecondPairBackInches = kCloseAllianceGoalBackInches;
+constexpr double kSecondPairLeftInches = kCloseAllianceGoalLeftInches + 24.0;
 const std::vector<std::size_t> kMotionTestStartLocationIndices{0, 1};
 
 double normalizeStick(std::int32_t rawAnalog) {
 	return static_cast<double>(rawAnalog) / 127.0;
 }
 
+// Non-blocking. raisedDegrees is measured from the lift's power-on (bottom)
+// position, not from wherever it is now, so successive calls don't
+// accumulate error and match waitForLiftRaisedDegrees().
 bool commandLiftRaisedByEncoderDegrees(double raisedDegrees) {
-	const double leftStartPosition = gWinchLeft->getPositionRaw();
-	const double rightStartPosition = gWinchRight->getPositionRaw();
 	const std::int32_t leftResult =
-	    gWinchLeft->moveAbsolute(leftStartPosition - raisedDegrees, kAutonomousLiftVelocityRpm);
+	    gWinchLeft->moveAbsolute(gWinchLeftStartingPosition - raisedDegrees, kAutonomousLiftVelocityRpm);
 	const std::int32_t rightResult =
-	    gWinchRight->moveAbsolute(rightStartPosition + raisedDegrees, kAutonomousLiftVelocityRpm);
+	    gWinchRight->moveAbsolute(gWinchRightStartingPosition + raisedDegrees, kAutonomousLiftVelocityRpm);
 	if (leftResult < 0 || rightResult < 0) {
 		gWinchLeft->writeVoltage(0);
 		gWinchRight->writeVoltage(0);
@@ -153,12 +279,40 @@ void runMotionTest(lightspeed::auton::AutonomousContext& ctx, const char* name, 
 	            finish.yInches - start.yInches, lightspeed::odom::toString(ctx.odometry.getConfidence()));
 }
 
-void driveStraightNoHold(lightspeed::auton::AutonomousContext& ctx, const lightspeed::odom::Pose&) {
-	ctx.driveStraightDistance.run(kMotionTestDistanceInches, false);
+// Gearing check: compares how far odometry (tracking wheel) says the robot
+// went against how far the drive motors turned, giving the real inches of
+// travel per motor revolution vs what kinematics is configured to assume. If
+// they disagree, every commanded speed is off by that ratio.
+void printDriveGearingCheck(lightspeed::auton::AutonomousContext& ctx, const lightspeed::odom::Pose& start,
+                            double leftStartDeg, double rightStartDeg) {
+	constexpr double kPi = 3.14159265358979323846;
+	const lightspeed::odom::Pose finish = ctx.odometry.getPose();
+	const double odomInches = std::hypot(finish.xInches - start.xInches, finish.yInches - start.yInches);
+	const double motorRevs = (std::abs(gLeftDrive->getPositionRaw() - leftStartDeg) +
+	                          std::abs(gRightDrive->getPositionRaw() - rightStartDeg)) /
+	                         2.0 / 360.0;
+	const auto& kin = lightspeed::motion::kCherenkovKinematics;
+	const double configuredInchesPerRev = kPi * kin.wheelDiameterInches * kin.gearRatio;
+	if (motorRevs > 0.01) {
+		const double actualInchesPerRev = odomInches / motorRevs;
+		std::printf("[gearingCheck] odom=%.2fin motorRevs=%.3f actual=%.3fin/rev configured=%.3fin/rev ratio=%.3f\n",
+		            odomInches, motorRevs, actualInchesPerRev, configuredInchesPerRev,
+		            actualInchesPerRev / configuredInchesPerRev);
+	}
 }
 
-void driveStraightWithHold(lightspeed::auton::AutonomousContext& ctx, const lightspeed::odom::Pose&) {
+void driveStraightNoHold(lightspeed::auton::AutonomousContext& ctx, const lightspeed::odom::Pose& start) {
+	const double leftStartDeg = gLeftDrive->getPositionRaw();
+	const double rightStartDeg = gRightDrive->getPositionRaw();
+	ctx.driveStraightDistance.run(kMotionTestDistanceInches, false);
+	printDriveGearingCheck(ctx, start, leftStartDeg, rightStartDeg);
+}
+
+void driveStraightWithHold(lightspeed::auton::AutonomousContext& ctx, const lightspeed::odom::Pose& start) {
+	const double leftStartDeg = gLeftDrive->getPositionRaw();
+	const double rightStartDeg = gRightDrive->getPositionRaw();
 	ctx.driveStraightDistance.run(kMotionTestDistanceInches);
+	printDriveGearingCheck(ctx, start, leftStartDeg, rightStartDeg);
 }
 
 void turnToHeadingTest(lightspeed::auton::AutonomousContext& ctx, const lightspeed::odom::Pose& start) {
@@ -204,31 +358,225 @@ void purePursuitTest(lightspeed::auton::AutonomousContext& ctx, const lightspeed
 	ctx.purePursuit.follow(path);
 }
 
+// Blocks until both winch motors are within tolerance of the lift target, or
+// the timeout elapses. Returns true if the lift reached its target.
+bool waitForLiftRaisedDegrees(double raisedDegrees, std::uint32_t timeoutMs,
+                              double toleranceDegrees = kWinchPositionToleranceDegrees) {
+	const std::uint32_t startTime = pros::millis();
+	while (pros::millis() - startTime < timeoutMs) {
+		const double leftRaised = gWinchLeftStartingPosition - gWinchLeft->getPositionRaw();
+		const double rightRaised = gWinchRight->getPositionRaw() - gWinchRightStartingPosition;
+		if (std::abs(leftRaised - raisedDegrees) <= toleranceDegrees &&
+		    std::abs(rightRaised - raisedDegrees) <= toleranceDegrees) {
+			return true;
+		}
+		pros::delay(kLoopPeriodMs);
+	}
+	return false;
+}
+
 void runCloseAlliance(lightspeed::auton::AutonomousContext& ctx) {
+	constexpr double kPi = 3.14159265358979323846;
+	const lightspeed::odom::Pose start = ctx.odometry.getPose();
+
+	// -- Flip the toggle --
+	// These are deliberate bumps: they need to arrive with speed, so they use
+	// a sharper profile and skip the overshoot guard (which would otherwise
+	// brake a 2in move to a crawl).
 	ctx.drivetrain.setMaxOutputVoltageMillivolts(kCloseAllianceDriveVoltageLimitMillivolts);
-	ctx.driveStraightDistance.run(2.0, false);
-	ctx.driveStraightDistance.run(-1.75, false);
-	ctx.driveStraightDistance.run(2.5, false);
+	ctx.driveStraightDistance.run(kCloseAllianceToggleFirstPushInches, false, kCloseAllianceToggleProfile, false,
+	                              kCloseAllianceToggleTimeoutSeconds);
+	ctx.driveStraightDistance.run(-kCloseAllianceToggleBackUpInches, false, kCloseAllianceToggleProfile, false,
+	                              kCloseAllianceToggleTimeoutSeconds);
+	pros::delay(kCloseAllianceToggleReseatMs);  // let the toggle spring back before the second flip
+	ctx.driveStraightDistance.run(kCloseAllianceToggleSecondPushInches, false, kCloseAllianceToggleProfile, false,
+	                              kCloseAllianceToggleTimeoutSeconds);
 	ctx.drivetrain.setMaxOutputVoltageMillivolts(12000);
 
-	constexpr double kTargetX = 19.0;
-	constexpr double kTargetY = 18.5;
-	constexpr lightspeed::motion::MotionProfileConfig kBackwardMoveProfile{
-	    .maxVelocity = 28.0,
-	    .maxAcceleration = 40.0,
-	    .maxJerk = 0.0,
+	const double headingRadians = start.headingDegrees * kPi / 180.0;
+	const double forwardX = std::sin(headingRadians);
+	const double forwardY = std::cos(headingRadians);
+	const double rightX = std::cos(headingRadians);
+	const double rightY = -std::sin(headingRadians);
+	const auto toField = [&](double backInches, double leftInches) {
+		return lightspeed::motion::Waypoint{
+		    start.xInches - forwardX * backInches - rightX * leftInches,
+		    start.yInches - forwardY * backInches - rightY * leftInches,
+		};
 	};
-	const lightspeed::odom::Pose start = ctx.odometry.getPose();
-	const double targetHeading = lightspeed::motion::headingToPoint(start, kTargetX, kTargetY);
-	const double backwardsHeading = targetHeading + 180.0;
-	const double distance = lightspeed::motion::distanceToPoint(start, kTargetX, kTargetY);
-	ctx.turnToHeading.run(backwardsHeading);
-	if (!commandLiftRaisedByEncoderDegrees(kAutonomousLiftRaiseDegrees)) {
-		return;
-	}
+	const lightspeed::motion::Waypoint target = toField(kCloseAllianceGoalBackInches, kCloseAllianceGoalLeftInches);
+
+	// -- Raise the lift + extend the hinge, then drive there in one reversing
+	// motion while the lift moves. moveAbsolute is non-blocking, so the lift
+	// runs concurrently with the blocking path follow below. --
+	const bool liftCommanded = commandLiftRaisedByEncoderDegrees(kAutonomousLiftRaiseDegrees);
 	gHingePneumaticExtended = true;
 	gHingePneumatic->set_value(gHingePneumaticExtended);
-	ctx.driveStraightDistance.run(-distance, false, kBackwardMoveProfile);
+
+	const lightspeed::odom::Pose current = ctx.odometry.getPose();
+	const double dx = current.xInches - start.xInches;
+	const double dy = current.yInches - start.yInches;
+	const double currentBack = -(dx * forwardX + dy * forwardY);
+	const double currentLeft = -(dx * rightX + dy * rightY);
+
+	// The quarter arc can't be bigger than the room available, or the path has
+	// to go forward first. Shrink it to fit if needed.
+	const double radius = std::max(
+	    1.0, std::min({kCloseAllianceTurnRadiusInches, kCloseAllianceGoalBackInches - currentBack,
+	                   kCloseAllianceGoalLeftInches - currentLeft - kCloseAllianceMinFinalStraightInches}));
+	if (radius < kCloseAllianceTurnRadiusInches) {
+		std::printf("[closeAlliance] arc radius reduced %.1f -> %.1fin to fit from (back %.2f, left %.2f)\n",
+		            kCloseAllianceTurnRadiusInches, radius, currentBack, currentLeft);
+	}
+	const double arcStartBack = kCloseAllianceGoalBackInches - radius;
+
+	std::vector<lightspeed::motion::Waypoint> goalPath{{current.xInches, current.yInches}};
+	if (arcStartBack - currentBack > 0.5) {
+		goalPath.push_back(toField(arcStartBack, currentLeft));  // end of straight reverse
+	}
+	// Explicit arc points, so the shape doesn't depend on path smoothing.
+	constexpr int kArcSegments = 6;
+	for (int i = 1; i <= kArcSegments; ++i) {
+		const double theta = (kPi / 2.0) * i / kArcSegments;
+		goalPath.push_back(toField(arcStartBack + radius * std::sin(theta), currentLeft + radius * (1.0 - std::cos(theta))));
+	}
+	goalPath.push_back(target);  // straight reverse into goal
+
+	ctx.purePursuit.follow(goalPath, true, 0, kCloseAllianceGoalLookaheadInches, kCloseAllianceGoalToleranceInches,
+	                       kCloseAllianceGoalTimeoutSeconds);
+	ctx.driveStraightDistance.run(-kGoalSeatPushInches, true, lightspeed::motion::kDriveStraightDistanceConfig.motionProfile,
+	                              false, kGoalSeatPushTimeoutSeconds);
+
+	// -- Score: quick, loose check that the lift is up before releasing the
+	// pin. It has had the whole drive to get there, so this rarely waits. --
+	if (liftCommanded && !waitForLiftRaisedDegrees(kAutonomousLiftRaiseDegrees, kCloseAllianceScoreLiftWaitTimeoutMs,
+	                                               kCloseAllianceScoreLiftToleranceDegrees)) {
+		std::printf("[closeAlliance] lift did not reach %.0fdeg before timeout, scoring anyway\n",
+		            kAutonomousLiftRaiseDegrees);
+	}
+	gClawPneumaticExtended = true;
+	gClawPneumatic->set_value(gClawPneumaticExtended);
+
+	const lightspeed::odom::Pose scored = ctx.odometry.getPose();
+	std::printf("[closeAlliance] goal target=(%.2f, %.2f, %.1fdeg) reached=(%.2f, %.2f, %.1fdeg)\n", target.x, target.y,
+	            std::fmod(start.headingDegrees + 90.0, 360.0), scored.xInches, scored.yInches, scored.headingDegrees);
+
+	// -- Pull forward off the goal. Give the claw time to release the pin
+	// first so driving away doesn't drag it off. The second lift raise starts
+	// with the drive and keeps going through the turn below. --
+	pros::delay(kCloseAllianceClawReleaseMs);
+	const double secondLiftDegrees = kAutonomousLiftRaiseDegrees + kCloseAllianceSecondLiftRaiseDegrees;
+	const bool secondLiftCommanded = commandLiftRaisedByEncoderDegrees(secondLiftDegrees);
+	const lightspeed::motion::Waypoint secondTarget =
+	    toField(kCloseAllianceSecondBackInches, kCloseAllianceSecondLeftInches);
+	ctx.purePursuit.follow({{scored.xInches, scored.yInches}, secondTarget});
+
+	const lightspeed::odom::Pose finish = ctx.odometry.getPose();
+	std::printf("[closeAlliance] second target=(%.2f, %.2f) reached=(%.2f, %.2f, %.1fdeg)\n", secondTarget.x,
+	            secondTarget.y, finish.xInches, finish.yInches, finish.headingDegrees);
+
+	// -- Turn to start + kCloseAllianceTurnRelativeDegrees (clockwise-positive)
+	// while the lift finishes. --
+	const double turnTargetDegrees = std::fmod(start.headingDegrees + kCloseAllianceTurnRelativeDegrees, 360.0);
+	ctx.turnToHeading.run(turnTargetDegrees);
+	if (secondLiftCommanded && !waitForLiftRaisedDegrees(secondLiftDegrees, kCloseAllianceLiftWaitTimeoutMs)) {
+		std::printf("[closeAlliance] lift did not reach %.0fdeg before timeout\n", secondLiftDegrees);
+	}
+
+	const lightspeed::odom::Pose turned = ctx.odometry.getPose();
+	std::printf("[closeAlliance] turn target=%.1fdeg reached=%.1fdeg\n", turnTargetDegrees, turned.headingDegrees);
+
+	// -- Straight reverse, holding the post-turn heading --
+	ctx.driveStraightDistance.run(-kCloseAllianceFinalReverseInches);
+
+	const lightspeed::odom::Pose reversed = ctx.odometry.getPose();
+	std::printf("[closeAlliance] final reverse %.2fin reached=(%.2f, %.2f, %.1fdeg)\n", kCloseAllianceFinalReverseInches,
+	            reversed.xInches, reversed.yInches, reversed.headingDegrees);
+
+	// ===== Cup + pin pairs: pick up, back into the goal, score. =====
+	// Claw: false = closed (grab), true = open (release).
+	const auto setClaw = [](bool open) {
+		gClawPneumaticExtended = open;
+		gClawPneumatic->set_value(gClawPneumaticExtended);
+	};
+	const auto moveLiftAndWait = [](double raisedDegrees, const char* step) {
+		if (commandLiftRaisedByEncoderDegrees(raisedDegrees) &&
+		    !waitForLiftRaisedDegrees(raisedDegrees, kPairLiftWaitTimeoutMs, kPairLiftToleranceDegrees)) {
+			std::printf("[closeAlliance] %s: lift did not reach %.0fdeg before timeout, continuing\n", step, raisedDegrees);
+		}
+	};
+	// Turn so the BACK faces the point, then reverse straight toward it,
+	// stopping stopShortInches before it. Uses the overshoot guard, so it won't
+	// drive past a stack. timeoutSeconds > 0 limits the move (for approaches
+	// that end pressed against something). shiftRightInches is a field trim:
+	// it moves the aim point to the robot's right as it will be facing while
+	// backing in (negative = left).
+	const auto reverseToPoint = [&](const lightspeed::motion::Waypoint& target, double stopShortInches,
+	                                double shiftRightInches, double timeoutSeconds, const char* step) {
+		const lightspeed::odom::Pose pose = ctx.odometry.getPose();
+		const double approachHeadingRadians =
+		    std::atan2(target.x - pose.xInches, target.y - pose.yInches) + kPi;  // back faces the target
+		const lightspeed::motion::Waypoint point{
+		    target.x + std::cos(approachHeadingRadians) * shiftRightInches,
+		    target.y - std::sin(approachHeadingRadians) * shiftRightInches,
+		};
+		const double toX = point.x - pose.xInches;
+		const double toY = point.y - pose.yInches;
+		const double distanceInches = std::hypot(toX, toY) - stopShortInches;
+		if (distanceInches < 0.5) {
+			return;
+		}
+		const double bearingDegrees = std::atan2(toX, toY) * 180.0 / kPi;  // clockwise from +y, like headings
+		ctx.turnToHeading.run(std::fmod(bearingDegrees + 180.0 + 360.0, 360.0));
+		ctx.driveStraightDistance.run(-distanceInches, true,
+		                              lightspeed::motion::kDriveStraightDistanceConfig.motionProfile, true,
+		                              timeoutSeconds);
+		const lightspeed::odom::Pose arrived = ctx.odometry.getPose();
+		std::printf("[closeAlliance] %s target=(%.2f, %.2f) reached=(%.2f, %.2f, %.1fdeg)\n", step, point.x, point.y,
+		            arrived.xInches, arrived.yInches, arrived.headingDegrees);
+	};
+	// Straight from wherever the pair was picked up: back faces the goal's
+	// center, then reverse in to contact distance (or until the goal stops it /
+	// kPairGoalTimeoutSeconds). Goal center = where the robot sat scoring the
+	// pin, plus the contact distance in the direction it was backing then.
+	const auto backIntoGoal = [&](double extraBackInches, double shiftRightInches, const char* step) {
+		const lightspeed::motion::Waypoint goalCenter =
+		    toField(kCloseAllianceGoalBackInches, kCloseAllianceGoalLeftInches + kGoalContactDistanceInches);
+		reverseToPoint(goalCenter, kGoalContactDistanceInches - extraBackInches, shiftRightInches, kPairGoalTimeoutSeconds,
+		               step);
+	};
+	const auto pickUpPair = [&](const char* step) {
+		moveLiftAndWait(kPairPickupLiftDegrees, step);
+		setClaw(false);
+		pros::delay(kPairGrabSettleMs);
+		moveLiftAndWait(kPairScoreLiftDegrees, step);
+	};
+	const auto scorePair = [&](const char* step) {
+		setClaw(true);
+		pros::delay(kCloseAllianceClawReleaseMs);
+		moveLiftAndWait(kPairClearLiftDegrees, step);
+	};
+
+	// -- Pair 1: the robot is already at its pickup position. --
+	pickUpPair("pair1 pickup");
+	backIntoGoal(kPairGoalExtraBackInches, kPairGoalShiftRightInches, "pair1 to goal");
+	scorePair("pair1 score");
+
+	// -- Pair 2 --
+	if (!kSecondPairPositionSet) {
+		std::printf("[closeAlliance] second pair position not set (kSecondPairPositionSet) -- stopping after pair 1\n");
+		return;
+	}
+	// Drive forward off the goal (the robot's back is on it), then turn so the
+	// BACK -- where the claw is -- faces the pickup point and reverse to it.
+	// (Driving forward all the way would arrive with the claw facing away.)
+	ctx.driveStraightDistance.run(kPairGoalPullOffInches);
+	reverseToPoint(toField(kPair2StagingBackInches, kSecondPairLeftInches), 0.0, 0.0, 0.0, "pair2 to staging");
+	reverseToPoint(toField(kSecondPairBackInches, kSecondPairLeftInches), 0.0, kPair2PickupShiftRightInches, 0.0,
+	               "pair2 to pickup");
+	pickUpPair("pair2 pickup");
+	backIntoGoal(kPair2GoalExtraBackInches, kPair2GoalShiftRightInches, "pair2 to goal");
+	scorePair("pair2 score");
 }
 
 }  // namespace
@@ -333,7 +681,7 @@ void initialize() {
 	gRoutineRegistry.registerRoutine(auton::Routine{
 	    .name = "closeAlliance",
 	    .validStartLocationIndices = {auton::kCloseAllianceStartLocationIndex},
-	    .previewPoints = {{0.0, 11.375}, {0.0, 9.375}, {0.0, 10.875}, {0.0, 8.875}, {18.0, 18.0}},
+	    .previewPoints = {{0.0, 11.375}, {0.0, 9.375}, {0.0, 10.875}, {0.0, 8.875}, {18.0, 21.375}, {9.0, 31.0}},
 	    .run = runCloseAlliance,
 	});
 
@@ -341,8 +689,8 @@ void initialize() {
 
 	gSerialLink.emplace(telemetry::TelemetryBus::instance());
 
-	// No-op unless Y was held at boot, in which case it never returns and
-	// nothing below starts this boot.
+	// No-op unless Y is held at startup, in which case it starts serial
+	// telemetry streaming and returns; normal operation continues.
 	diagnostics::runDiagnosticModeIfRequested(*gSerialLink);
 
 	gSelectorGui->start();
@@ -571,8 +919,11 @@ void opcontrol() {
 
 		const std::uint32_t now = pros::millis();
 		if (now - previousStatusTime >= kStatusIntervalMs) {
-			std::printf("[opcontrol] target=(%.0f, %.0f)rpm slewed=(%.0f, %.0f)rpm accelLimit=%.0fRPM/s\n",
-			            leftTargetRpm, rightTargetRpm, leftSlewedRpm, rightSlewedRpm, accelLimit);
+			const odom::Pose statusPose = gOdometry->getPose();
+			std::printf("[opcontrol] target=(%.0f, %.0f)rpm slewed=(%.0f, %.0f)rpm accelLimit=%.0fRPM/s lift=%.0fdeg "
+			            "pose=(%.2f, %.2f, %.1fdeg)\n",
+			            leftTargetRpm, rightTargetRpm, leftSlewedRpm, rightSlewedRpm, accelLimit, liftRaisedDegrees,
+			            statusPose.xInches, statusPose.yInches, statusPose.headingDegrees);
 			previousStatusTime = now;
 		}
 

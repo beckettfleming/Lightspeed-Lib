@@ -7,26 +7,35 @@ permalink: /layers/diagnostics/
 
 **Namespace:** `lightspeed::diagnostics` · **Header:** `include/lightspeed/diagnostics/diagnostic_mode.hpp`
 
-A boot-time "service mode" that replaces normal robot operation with live telemetry streaming
-and the AprilTag vision bench test.
+A startup option that streams live telemetry over USB while the robot otherwise runs normally.
 
 ---
 
 ## How to enter it
 
-**Hold the `Y` button on the controller while the brain powers on / the program starts.**
+**Hold `Y` on the controller while the program starts, and keep holding it until the controller
+rumbles** (or the banner prints in `pros terminal`). The check happens after IMU calibration, so
+that's about 3 seconds after the program starts.
 
-That's it. Release it once the banner prints.
+The controller must be connected. The check waits up to 3 seconds for it, then samples `Y` for
+half a second. The terminal always says what happened:
 
 ```
-=== DIAGNOSTIC MODE (Y held at boot) ===
-Streaming telemetry over serial + running the AprilTag vision bench
-test. This REPLACES normal competition operation for this boot --
-power-cycle without Y held to boot normally.
-=========================================
+[diagnostics] Y not held at startup -- normal boot, no serial telemetry
+[diagnostics] controller not connected -- skipping diagnostic-mode check
 ```
 
-**To leave it: power-cycle without holding Y.** There is no in-mode exit.
+or, when it works:
+
+```
+=== DIAGNOSTIC MODE (Y held at startup) ===
+Streaming telemetry over serial as CSV. Driver control and
+autonomous still run normally, so you can drive while streaming.
+Power-cycle without Y held to stop streaming.
+============================================
+```
+
+**To leave it: power-cycle without holding Y.**
 
 ---
 
@@ -39,21 +48,18 @@ power-cycle without Y held to boot normally.
       |
       +--> runDiagnosticModeIfRequested()
                |
-               +-- Y not held? --> return immediately, no-op
-               |                   normal competition flow continues
+               +-- Y not held? --> return, no-op
                |
-               +-- Y held? -----> print the banner
+               +-- Y held? -----> print the banner, rumble
                                   start SerialLink (10 Hz CSV over USB)
-                                  run runVisionBenchTest()  <-- never returns
+                                  return
+      |
+      +--> selector GUI, SD logger, dashboard start as normal
 ```
 
-Because the vision bench test never returns, `initialize()` never returns either. So the auton
-selector GUI, the SD logger, and the dashboard **never start this boot**, and `autonomous()` and
-`opcontrol()` never run.
-
-That's the point: it's a **replacement** for normal operation, not something running alongside
-it. There's no risk of a diagnostic loop interfering with match behavior, because when
-diagnostics are running there is no match behavior.
+Normal operation continues, so you can drive the robot (for example on blocks, to tune the
+velocity controller) while telemetry streams. Other terminal prints are mixed into the stream;
+filter for lines that start with a number when plotting.
 
 ---
 
@@ -86,9 +92,10 @@ Tail it with `pros terminal` and pipe it into a plotting script. This is the bes
 for tuning the drivetrain velocity controller — you can watch a step response live instead of
 guessing from the robot's behavior. See [Tuning Guide]({{ site.baseurl }}/guides/tuning/).
 
-### AprilTag vision bench test
+### AprilTag vision bench test (not currently wired in)
 
-Loops at 10 Hz printing, per cycle:
+`diagnostic_mode.cpp` no longer calls `vision::runVisionBenchTest()`. To use it, call it
+yourself (it never returns). When running, it loops at 10 Hz printing, per cycle:
 
 - Raw corner pixel data for the detected tag
 - The computed bearing, distance, and skew
@@ -103,14 +110,8 @@ map, and — importantly — the skew formula's sign. See [Vision Layer]({{ site
 
 ## Why `Y`
 
-It's the only face button not already bound in `opcontrol()`:
-
-| Button | Normal binding |
-|---|---|
-| R1 / R2 | Demo arm presets |
-| L1 | Intake + demo macro |
-| B, Down | Intake |
-| **Y** | **free — used here** |
+`Y` also toggles the claw in driver control. Holding it at startup is harmless, but release it
+before driver control starts or the first press may register as a claw toggle.
 
 The button constant is `kBootButton` in
 [`diagnostic_mode.cpp`](https://github.com/beckettfleming/Lightspeed-Lib/blob/main/src/lightspeed/diagnostics/diagnostic_mode.cpp). Change it there if
@@ -120,15 +121,14 @@ you rebind things.
 
 ## Is it safe to leave in?
 
-Yes, and that's the design intent. The call sits unconditionally at the top of `initialize()`:
+Yes. The call sits unconditionally in `initialize()`:
 
 ```cpp
-diagnostics::runDiagnosticModeIfRequested(*gVisionCorrector, *gOdometry, *gSerialLink);
+diagnostics::runDiagnosticModeIfRequested(*gSerialLink);
 ```
 
-If Y isn't held, it constructs a `pros::Controller`, reads one button, and returns. Normal
-competition operation proceeds completely unaffected. There is no reason to remove it before a
-competition.
+If Y isn't held, it returns and normal operation is unaffected. It adds about half a second to
+startup (up to 3.5 seconds if no controller is connected).
 
 ---
 
@@ -137,12 +137,11 @@ competition.
 To add another harness, edit
 [`src/lightspeed/diagnostics/diagnostic_mode.cpp`](https://github.com/beckettfleming/Lightspeed-Lib/blob/main/src/lightspeed/diagnostics/diagnostic_mode.cpp).
 
-Since `runVisionBenchTest()` never returns, anything you add must either run **before** it, or
-replace it. Options:
+Options:
 
-- **Start another background task** before the vision test (like `SerialLink` does) — it keeps
-  running alongside.
-- **Gate on a second button** and branch to a different blocking harness.
+- **Start another background task** (like `SerialLink` does) — it runs alongside normal
+  operation.
+- **Gate on a second button** and branch to a blocking harness such as the vision bench test.
 
 If you build a third or fourth harness, a small menu here — pick with the D-pad, confirm with A
 — would be a natural next step. The current single-mode form is deliberately the simplest thing

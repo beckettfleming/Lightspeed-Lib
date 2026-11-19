@@ -138,6 +138,14 @@ MotionState MotionProfile::sample(double timeSeconds) const {
         return MotionState{.position = startPosition_, .velocity = 0.0, .acceleration = 0.0};
     }
 
+    // Past the end the profile is finished: at rest at the target. Without
+    // this, clamping t to totalDuration_ returned the last segment's state --
+    // for a trapezoid that's acceleration = -maxAcceleration forever, which
+    // any kA feedforward turns into a constant reverse push after the move.
+    if (timeSeconds >= totalDuration_) {
+        return MotionState{.position = startPosition_ + direction_ * distance_, .velocity = 0.0, .acceleration = 0.0};
+    }
+
     const double t = std::clamp(timeSeconds, 0.0, totalDuration_);
     const MotionState local = useSCurve_ ? sampleSCurve(t) : sampleTrapezoid(t);
 

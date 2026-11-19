@@ -31,6 +31,17 @@ struct DriveStraightDistanceConfig {
     double timeoutSeconds;
     std::uint32_t loopPeriodMs;
     DrivetrainKinematicsConfig kinematics;
+
+    // Overshoot guard. Every cycle, speed TOWARD the target is capped at
+    // sqrt(2 * maxBrakingDecel * remaining), where remaining is measured from
+    // odometry and shortened by (current speed * brakingLagSeconds) to cover
+    // the drivetrain's response delay. Unlike the profile (which is
+    // time-based and can't see that the robot got ahead of it), this uses
+    // where the robot actually is, so it brakes in time even if the robot is
+    // running fast. Set maxBrakingDecel to what the robot can REALLY do on
+    // the ground -- lower = safer, slower final approach. 0 disables.
+    double maxBrakingDecel = 0.0;      // inches/s^2
+    double brakingLagSeconds = 0.0;    // drivetrain response delay
 };
 
 class DriveStraightDistance {
@@ -42,7 +53,13 @@ public:
     // the start of the call unless holdHeading is false. Stops (0,0 target)
     // on return.
     void run(double distanceInches, bool holdHeading = true);
-    void run(double distanceInches, bool holdHeading, const MotionProfileConfig& motionProfile);
+    // useOvershootGuard = false skips the maxBrakingDecel cap for this move --
+    // for deliberate impacts (e.g. bumping a field toggle) where arriving
+    // with speed is the point. timeoutSeconds > 0 overrides the configured
+    // timeout -- for moves that may end pressed against something and can't
+    // physically reach their distance.
+    void run(double distanceInches, bool holdHeading, const MotionProfileConfig& motionProfile,
+             bool useOvershootGuard = true, double timeoutSeconds = 0.0);
 
 private:
     control::DrivetrainVelocityController& drivetrain_;

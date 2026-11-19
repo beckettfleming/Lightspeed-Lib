@@ -20,7 +20,12 @@ namespace lightspeed::control {
 inline const DrivetrainVelocityConfig kDrivetrainVelocityConfig{
     .pidf =
         {
-            .kP = 20.0,  // mV per RPM of error. TODO: tune
+            // mV per RPM of error. Was 20: on the ground it couldn't brake --
+            // 12in test 2026-11-18 asked 118rpm while doing ~197, and
+            // 20*118 + 20*(118-197) + kS still came out POSITIVE (~+1.1V), so
+            // the robot coasted past the stop. 35 gives real braking voltage.
+            // Check on blocks for buzzing at steady speed; back off if so.
+            .kP = 35.0,
             .kI = 0.0,   // TODO: tune once kP/kD are settled
             .kD = 0.0,   // TODO: tune
             .kV = 20.0,  // mV per motor RPM at 12V / 600 RPM. TODO: tune
